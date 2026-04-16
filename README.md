@@ -93,7 +93,7 @@ defmodule PrayerApp.Accounts.User do
     |> validate_required([:email, :password, :name, :username])
     |> validate_length(:name, min: 2, max: 100)
     |> validate_length(:username, min: 3, max: 30)
-    |> validate_format(:username, ~r/^[a-zA-Z0-9_\.]+$/)
+    |> validate_format(:username, ~r/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/)
     |> unsafe_validate_unique(:email, PrayerApp.Repo)
     |> unsafe_validate_unique(:username, PrayerApp.Repo)
     |> unique_constraint(:email)
@@ -440,7 +440,7 @@ def list_following_feed(current_user) do
       where:
         pr.user_id in subquery(followed_ids_query) or
           pr.id in subquery(reprayed_request_ids_query),
-      distinct: [asc: pr.id],
+      distinct: true,
       order_by: [desc: pr.inserted_at],
       preload: [:user]
 
