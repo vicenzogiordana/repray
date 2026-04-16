@@ -93,7 +93,7 @@ defmodule PrayerApp.Accounts.User do
     |> validate_required([:email, :password, :name, :username])
     |> validate_length(:name, min: 2, max: 100)
     |> validate_length(:username, min: 3, max: 30)
-    |> validate_format(:username, ~r/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/)
+    |> validate_format(:username, ~r/^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*$/)
     |> unsafe_validate_unique(:email, PrayerApp.Repo)
     |> unsafe_validate_unique(:username, PrayerApp.Repo)
     |> unique_constraint(:email)
@@ -330,7 +330,7 @@ defmodule PrayerApp.Social.Follow do
     changeset =
       case {get_field(changeset, :follower_id), get_field(changeset, :followed_id)} do
         {id, id} when not is_nil(id) ->
-          add_error(changeset, :followed_id, "cannot follow yourself")
+          add_error(changeset, :followed_id, "no puedes seguirte a ti mismo")
 
         _ ->
           changeset
@@ -407,7 +407,7 @@ defmodule PrayerApp.Interactions.RePray do
       |> length()
 
     if words > 50 do
-      [comment: "must have at most 50 words"]
+      [comment: "debe tener como máximo 50 palabras"]
     else
       []
     end
