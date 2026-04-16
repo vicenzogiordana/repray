@@ -324,16 +324,19 @@ defmodule PrayerApp.Social.Follow do
   def changeset(follow, attrs) do
     changeset =
       follow
-    |> cast(attrs, [:follower_id, :followed_id])
-    |> validate_required([:follower_id, :followed_id])
+      |> cast(attrs, [:follower_id, :followed_id])
+      |> validate_required([:follower_id, :followed_id])
 
-    case {get_field(changeset, :follower_id), get_field(changeset, :followed_id)} do
-      {id, id} when not is_nil(id) ->
-        add_error(changeset, :followed_id, "cannot follow yourself")
+    changeset =
+      case {get_field(changeset, :follower_id), get_field(changeset, :followed_id)} do
+        {id, id} when not is_nil(id) ->
+          add_error(changeset, :followed_id, "cannot follow yourself")
 
-      _ ->
-        changeset
-    end
+        _ ->
+          changeset
+      end
+
+    changeset
     |> unique_constraint([:follower_id, :followed_id])
     |> assoc_constraint(:follower)
     |> assoc_constraint(:followed)
@@ -396,7 +399,7 @@ defmodule PrayerApp.Interactions.RePray do
     |> assoc_constraint(:prayer_request)
   end
 
-  defp validate_comment_word_count(:comment, comment) when is_binary(comment) do
+  defp validate_comment_word_count(_field, comment) when is_binary(comment) do
     words =
       comment
       |> String.trim()
@@ -410,7 +413,7 @@ defmodule PrayerApp.Interactions.RePray do
     end
   end
 
-  defp validate_comment_word_count(:comment, _), do: []
+  defp validate_comment_word_count(_field, _), do: []
 end
 ```
 
@@ -437,7 +440,7 @@ def list_following_feed(current_user) do
       where:
         pr.user_id in subquery(followed_ids_query) or
           pr.id in subquery(reprayed_request_ids_query),
-      distinct: true,
+      distinct: [asc: pr.id],
       order_by: [desc: pr.inserted_at],
       preload: [:user]
 
