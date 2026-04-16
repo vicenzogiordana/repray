@@ -18,7 +18,7 @@ defmodule PrayerApp.Prayers do
 
   """
   def list_prayer_requests do
-    Repo.all(PrayerRequest)
+    Repo.all(from p in PrayerRequest, order_by: [desc: p.inserted_at], preload: [:user, :re_prays])
   end
 
   @doc """
@@ -49,7 +49,7 @@ defmodule PrayerApp.Prayers do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_prayer_request(attrs) do
+  def create_prayer_request(attrs \\ %{}) do
     %PrayerRequest{}
     |> PrayerRequest.changeset(attrs)
     |> Repo.insert()
