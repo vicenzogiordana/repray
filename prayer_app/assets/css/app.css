@@ -104,7 +104,7 @@
 
 /* This file is for your main application CSS */
 
-@plugin "daisyui/theme" {
+@plugin "../vendor/daisyui-theme" {
   name: "lofi";
   default: false;
   prefersdark: false;
