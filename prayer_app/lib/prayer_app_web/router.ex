@@ -50,7 +50,11 @@ defmodule PrayerAppWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{PrayerAppWeb.UserAuth, :require_authenticated}] do
-      live "/", FeedLive.Index, :index
+      live "/", FeedLive.Index, :global
+      live "/following", FeedLive.Index, :following
+      live "/new", FeedLive.Index, :new
+      live "/search", FeedLive.Index, :search
+      live "/profile", FeedLive.Index, :profile
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end

@@ -31,6 +31,10 @@ defmodule PrayerAppWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :live_action, :atom,
+    default: nil,
+    doc: "the current LiveView action"
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -38,6 +42,30 @@ defmodule PrayerAppWeb.Layouts do
     <main>
       {render_slot(@inner_block)}
     </main>
+
+    <div :if={assigns[:live_action] in [:global, :following, :new, :search, :profile]}>
+      <div class="fixed bottom-0 left-0 z-50 w-full h-16 bg-base-100 border-t border-base-200 flex justify-around items-center">
+        <.link patch={~p"/"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :global, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+          <.icon name="hero-globe-americas" class="w-7 h-7" />
+        </.link>
+
+        <.link patch={~p"/following"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :following, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+          <.icon name="hero-home" class="w-7 h-7" />
+        </.link>
+
+        <.link patch={~p"/new"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :new, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+          <.icon name="hero-plus-circle" class="w-7 h-7" />
+        </.link>
+
+        <.link patch={~p"/search"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :search, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+          <.icon name="hero-magnifying-glass" class="w-7 h-7" />
+        </.link>
+
+        <.link patch={~p"/profile"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :profile, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+          <.icon name="hero-user" class="w-7 h-7" />
+        </.link>
+      </div>
+    </div>
 
     <.flash_group flash={@flash} />
     """
