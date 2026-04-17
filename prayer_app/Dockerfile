@@ -2,7 +2,7 @@
 
 ARG ELIXIR_VERSION=1.15.7
 
-FROM elixir:${ELIXIR_VERSION}-otp-26-bookworm AS build
+FROM elixir:${ELIXIR_VERSION}-otp-26 AS build
 
 RUN apt-get update -y && apt-get install -y build-essential git curl ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
