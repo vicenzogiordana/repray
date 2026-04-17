@@ -43,7 +43,7 @@ defmodule PrayerAppWeb.Layouts do
       {render_slot(@inner_block)}
     </main>
 
-    <div :if={assigns[:live_action] in [:global, :following, :new, :search, :profile]}>
+    <div :if={assigns[:live_action] in [:global, :following, :new, :search, :profile, :user_profile]}>
       <div class="fixed bottom-0 left-0 z-50 w-full h-16 bg-base-100 border-t border-base-200 flex justify-around items-center">
         <.link patch={~p"/"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :global, do: "text-neutral font-bold", else: "text-base-content/40")]}>
           <.icon name="hero-globe-americas" class="w-7 h-7" />
@@ -61,7 +61,7 @@ defmodule PrayerAppWeb.Layouts do
           <.icon name="hero-magnifying-glass" class="w-7 h-7" />
         </.link>
 
-        <.link patch={~p"/profile"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :profile, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+        <.link patch={~p"/profile"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] in [:profile, :user_profile], do: "text-neutral font-bold", else: "text-base-content/40")]}>
           <.icon name="hero-user" class="w-7 h-7" />
         </.link>
       </div>

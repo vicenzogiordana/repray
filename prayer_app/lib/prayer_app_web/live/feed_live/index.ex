@@ -25,9 +25,11 @@ defmodule PrayerAppWeb.FeedLive.Index do
       |> assign(:open_update_forms, MapSet.new())
       |> assign(:open_testimony_forms, MapSet.new())
         |> assign(:profile_tab, :requests)
+          |> assign(:profile_user, current_user)
+          |> assign(:is_own_profile, true)
         |> assign(:search_results, [])
         |> assign(:search_query, "")
-        |> assign(:followed_ids, [])
+            |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
       |> assign(:profile_requests, [])
       |> assign(:profile_repray_requests, [])
       |> assign(:profile_stats, %{requests: 0, followers: 0, following: 0})}
@@ -63,6 +65,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp apply_action(socket, :search, _params) do
+    current_user = socket.assigns.current_user
+
     socket
     |> assign(:current_view, :search)
     |> assign(:open_update_forms, MapSet.new())
@@ -70,19 +74,12 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:requests, [])
     |> assign(:search_results, [])
     |> assign(:search_query, "")
-    |> assign(:followed_ids, Social.list_followed_ids(socket.assigns.current_user.id))
+    |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
   end
 
   defp apply_action(socket, :profile, _params) do
     current_user = socket.assigns.current_user
-    profile_requests = Prayers.list_user_requests(current_user.id)
-
-    profile_repray_requests =
-      current_user.id
-      |> Interactions.list_user_re_prays()
-      |> Enum.map(& &1.prayer_request)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq_by(& &1.id)
+    {profile_requests, profile_repray_requests, profile_stats} = profile_data_for(current_user)
 
     socket
     |> assign(:current_view, :profile)
@@ -90,13 +87,39 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
     |> assign(:profile_tab, :requests)
+    |> assign(:profile_user, current_user)
+    |> assign(:is_own_profile, true)
+    |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
     |> assign(:profile_requests, profile_requests)
     |> assign(:profile_repray_requests, profile_repray_requests)
-    |> assign(:profile_stats, %{
-      requests: length(profile_requests),
-      followers: Social.count_followers(current_user.id),
-      following: Social.count_following(current_user.id)
-    })
+    |> assign(:profile_stats, profile_stats)
+  end
+
+  defp apply_action(socket, :user_profile, %{"username" => username}) do
+    current_user = socket.assigns.current_user
+
+    case Accounts.get_user_by_username(username) do
+      nil ->
+        socket
+        |> put_flash(:error, "Perfil no encontrado")
+        |> push_patch(to: ~p"/search")
+
+      profile_user ->
+        {profile_requests, profile_repray_requests, profile_stats} = profile_data_for(profile_user)
+
+        socket
+        |> assign(:current_view, :profile)
+        |> assign(:open_update_forms, MapSet.new())
+        |> assign(:open_testimony_forms, MapSet.new())
+        |> assign(:requests, [])
+        |> assign(:profile_tab, :requests)
+        |> assign(:profile_user, profile_user)
+        |> assign(:is_own_profile, profile_user.id == current_user.id)
+        |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
+        |> assign(:profile_requests, profile_requests)
+        |> assign(:profile_repray_requests, profile_repray_requests)
+        |> assign(:profile_stats, profile_stats)
+    end
   end
 
   @impl true
@@ -356,12 +379,19 @@ defmodule PrayerAppWeb.FeedLive.Index do
               <div class="card-body">
                 <div class="flex items-center gap-3 mb-2">
                   <div class="avatar placeholder">
-                    <div class="bg-base-300 text-base-content rounded-full w-10">
-                      <span>{avatar_initial(request)}</span>
+                    <div class="bg-base-300 text-base-content rounded-full w-10 h-10 flex items-center justify-center">
+                      <span class="leading-none">{avatar_initial(request)}</span>
                     </div>
                   </div>
 
-                  <p class="font-semibold">{display_name(request)}</p>
+                  <.link
+                    :if={not request.is_anonymous and not is_nil(request.user)}
+                    patch={profile_path(request.user, @current_user)}
+                    class="font-semibold hover:underline"
+                  >
+                    {display_name(request)}
+                  </.link>
+                  <p :if={request.is_anonymous or is_nil(request.user)} class="font-semibold">{display_name(request)}</p>
                 </div>
 
                 <p class="text-base leading-relaxed">{request.content}</p>
@@ -547,7 +577,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
           </form>
 
           <div :for={user <- @search_results} class="flex items-center justify-between p-4 bg-base-100 rounded-[2rem] shadow-sm border border-base-200 mb-3">
-            <div class="flex items-center gap-4 min-w-0">
+            <.link patch={profile_path(user, @current_user)} class="flex items-center gap-4 min-w-0">
               <div class="bg-base-300 text-lg font-bold rounded-full w-12 h-12 flex items-center justify-center shrink-0">
                 {user_initial(user)}
               </div>
@@ -555,7 +585,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                 <p class="font-bold truncate">{user.name}</p>
                 <p class="text-sm text-base-content/50 truncate">@{user.username}</p>
               </div>
-            </div>
+            </.link>
 
             <button
               type="button"
@@ -581,8 +611,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
               <div class="flex items-start justify-between gap-3 sm:gap-4">
                 <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                   <div class="avatar placeholder">
-                    <div class="bg-base-300 text-base-content rounded-full w-14 h-14 sm:w-20 sm:h-20">
-                      <span class="text-xl sm:text-2xl">{profile_initial(@current_user)}</span>
+                    <div class="bg-base-300 text-base-content rounded-full w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center">
+                      <span class="text-xl sm:text-2xl">{profile_initial(@profile_user)}</span>
                     </div>
                   </div>
 
@@ -602,7 +632,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                   </div>
                 </div>
 
-                <div class="dropdown dropdown-end shrink-0">
+                <div :if={@is_own_profile} class="dropdown dropdown-end shrink-0">
                   <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm">
                     <.icon name="hero-cog-6-tooth" class="size-5" />
                   </div>
@@ -614,11 +644,30 @@ defmodule PrayerAppWeb.FeedLive.Index do
               </div>
 
               <div class="mt-3">
-                <p class="font-semibold">{display_name_from_user(@current_user)}</p>
-                <p class="text-sm text-base-content/60">@{profile_username(@current_user)}</p>
+                <p class="font-semibold">{display_name_from_user(@profile_user)}</p>
+                <p class="text-sm text-base-content/60">@{profile_username(@profile_user)}</p>
               </div>
 
-              <button type="button" class="btn btn-outline btn-sm w-full mt-4 rounded-[2rem]">Editar Perfil</button>
+              <button
+                :if={@is_own_profile}
+                type="button"
+                class="btn btn-outline btn-sm w-full mt-4 rounded-[2rem]"
+              >
+                Editar Perfil
+              </button>
+
+              <button
+                :if={not @is_own_profile}
+                type="button"
+                phx-click="toggle_follow"
+                phx-value-id={@profile_user.id}
+                class={[
+                  "btn btn-sm w-full mt-4 rounded-[2rem]",
+                  if(@profile_user.id in @followed_ids, do: "btn-neutral", else: "btn-outline")
+                ]}
+              >
+                {if @profile_user.id in @followed_ids, do: "Siguiendo", else: "Seguir"}
+              </button>
             </div>
           </div>
 
@@ -632,7 +681,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                 if(@profile_tab == :requests, do: "tab-active", else: "")
               ]}
             >
-              <.icon name="hero-document-text" class="size-4" /> Mis Pedidos
+              <.icon name="hero-document-text" class="size-4" /> Pedidos
             </button>
             <button
               type="button"
@@ -643,7 +692,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                 if(@profile_tab == :reprays, do: "tab-active", else: "")
               ]}
             >
-              <.icon name="hero-arrow-path" class="size-4" /> Mis Re-prays
+              <.icon name="hero-arrow-path" class="size-4" /> Re-prays
             </button>
           </div>
 
@@ -666,11 +715,18 @@ defmodule PrayerAppWeb.FeedLive.Index do
                 <div class="flex items-center justify-between gap-3 mb-2">
                   <div class="flex items-center gap-3">
                     <div class="avatar placeholder">
-                      <div class="bg-base-300 text-base-content rounded-full w-10">
-                        <span>{avatar_initial(request)}</span>
+                      <div class="bg-base-300 text-base-content rounded-full w-10 h-10 flex items-center justify-center">
+                        <span class="leading-none">{avatar_initial(request)}</span>
                       </div>
                     </div>
-                    <p class="font-semibold">{display_name(request)}</p>
+                    <.link
+                      :if={not request.is_anonymous and not is_nil(request.user)}
+                      patch={profile_path(request.user, @current_user)}
+                      class="font-semibold hover:underline"
+                    >
+                      {display_name(request)}
+                    </.link>
+                    <p :if={request.is_anonymous or is_nil(request.user)} class="font-semibold">{display_name(request)}</p>
                   </div>
 
                   <span :if={@profile_tab == :reprays} class="badge badge-outline">Re-pray</span>
@@ -744,6 +800,17 @@ defmodule PrayerAppWeb.FeedLive.Index do
   defp display_name_from_user(%{name: name}) when is_binary(name) and byte_size(name) > 0, do: name
   defp display_name_from_user(_), do: "Usuario"
 
+  defp profile_path(%{id: user_id}, %{id: current_user_id}) when user_id == current_user_id do
+    ~p"/profile"
+  end
+
+  defp profile_path(%{username: username}, _current_user)
+       when is_binary(username) and byte_size(username) > 0 do
+    ~p"/profile/#{username}"
+  end
+
+  defp profile_path(_, _), do: ~p"/profile"
+
   defp profile_username(%{username: username}) when is_binary(username) and byte_size(username) > 0,
     do: username
 
@@ -775,6 +842,25 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp user_initial(_), do: "U"
+
+  defp profile_data_for(profile_user) do
+    profile_requests = Prayers.list_user_requests(profile_user.id)
+
+    profile_repray_requests =
+      profile_user.id
+      |> Interactions.list_user_re_prays()
+      |> Enum.map(& &1.prayer_request)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq_by(& &1.id)
+
+    profile_stats = %{
+      requests: length(profile_requests),
+      followers: Social.count_followers(profile_user.id),
+      following: Social.count_following(profile_user.id)
+    }
+
+    {profile_requests, profile_repray_requests, profile_stats}
+  end
 
   defp history_events(request) do
     updates =
