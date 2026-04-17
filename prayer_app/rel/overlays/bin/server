@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+export PHX_SERVER=true
+exec /app/bin/prayer_app start

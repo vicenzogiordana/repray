@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+export DATABASE_URL="${DIRECT_DATABASE_URL:-${DATABASE_URL}}"
+exec /app/bin/prayer_app eval "PrayerApp.Release.migrate"

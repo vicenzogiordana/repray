@@ -19,6 +19,8 @@ defmodule PrayerAppWeb.Router do
 
   scope "/", PrayerAppWeb do
     pipe_through :browser
+
+    get "/healthz", HealthController, :index
   end
 
   # Other scopes may use custom stacks.
