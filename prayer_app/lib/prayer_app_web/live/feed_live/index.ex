@@ -18,7 +18,9 @@ defmodule PrayerAppWeb.FeedLive.Index do
      |> assign(:form, form)
      |> assign(:requests, [])
      |> assign(:current_user, current_user)
-     |> assign(:current_view, :global)}
+      |> assign(:current_view, :global)
+      |> assign(:open_update_forms, MapSet.new())
+      |> assign(:open_testimony_forms, MapSet.new())}
   end
 
   @impl true
@@ -29,30 +31,40 @@ defmodule PrayerAppWeb.FeedLive.Index do
   defp apply_action(socket, :global, _params) do
     socket
     |> assign(:current_view, :global)
+    |> assign(:open_update_forms, MapSet.new())
+    |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, PrayerApp.Prayers.list_prayer_requests())
   end
 
   defp apply_action(socket, :following, _params) do
     socket
     |> assign(:current_view, :following)
+    |> assign(:open_update_forms, MapSet.new())
+    |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, PrayerApp.Prayers.list_following_feed(socket.assigns.current_user))
   end
 
   defp apply_action(socket, :new, _params) do
     socket
     |> assign(:current_view, :new)
+    |> assign(:open_update_forms, MapSet.new())
+    |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
   end
 
   defp apply_action(socket, :search, _params) do
     socket
     |> assign(:current_view, :search)
+    |> assign(:open_update_forms, MapSet.new())
+    |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
   end
 
   defp apply_action(socket, :profile, _params) do
     socket
     |> assign(:current_view, :profile)
+    |> assign(:open_update_forms, MapSet.new())
+    |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
   end
 
@@ -82,6 +94,111 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, as: :prayer_request))}
+    end
+  end
+
+  @impl true
+  def handle_event("toggle_update_form", %{"request_id" => request_id}, socket) do
+    case editable_request(socket, request_id) do
+      {:ok, request} ->
+        {:noreply,
+         update(socket, :open_update_forms, fn open ->
+           toggle_set(open, request.id)
+         end)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("toggle_testimony_form", %{"request_id" => request_id}, socket) do
+    case editable_request(socket, request_id) do
+      {:ok, request} ->
+        if request.testimony do
+          {:noreply, socket}
+        else
+          {:noreply,
+           update(socket, :open_testimony_forms, fn open ->
+             toggle_set(open, request.id)
+           end)}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("save_update", %{"request_id" => request_id, "content" => content}, socket) do
+    case editable_request(socket, request_id) do
+      {:ok, request} ->
+        content = String.trim(content || "")
+
+        if content == "" do
+          {:noreply, put_flash(socket, :error, "El update no puede estar vacio")}
+        else
+          case Prayers.create_update(%{"prayer_request_id" => request.id, "content" => content}) do
+            {:ok, update_item} ->
+              {:noreply,
+               socket
+               |> update(:requests, fn requests ->
+                 Enum.map(requests, fn req ->
+                   if req.id == request.id do
+                     %{req | updates: List.wrap(req.updates) ++ [update_item]}
+                   else
+                     req
+                   end
+                 end)
+               end)
+               |> update(:open_update_forms, &MapSet.delete(&1, request.id))}
+
+            {:error, _changeset} ->
+              {:noreply, put_flash(socket, :error, "No se pudo guardar el update")}
+          end
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("save_testimony", %{"request_id" => request_id, "content" => content}, socket) do
+    case editable_request(socket, request_id) do
+      {:ok, request} ->
+        content = String.trim(content || "")
+
+        cond do
+          content == "" ->
+            {:noreply, put_flash(socket, :error, "El testimonio no puede estar vacio")}
+
+          request.testimony != nil ->
+            {:noreply, put_flash(socket, :error, "Este pedido ya tiene testimonio")}
+
+          true ->
+            case Prayers.create_testimony(%{"prayer_request_id" => request.id, "content" => content}) do
+              {:ok, testimony_item} ->
+                {:noreply,
+                 socket
+                 |> update(:requests, fn requests ->
+                   Enum.map(requests, fn req ->
+                     if req.id == request.id do
+                       %{req | testimony: testimony_item}
+                     else
+                       req
+                     end
+                   end)
+                 end)
+                 |> update(:open_testimony_forms, &MapSet.delete(&1, request.id))}
+
+              {:error, _changeset} ->
+                {:noreply, put_flash(socket, :error, "No se pudo guardar el testimonio")}
+            end
+        end
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -133,8 +250,16 @@ defmodule PrayerAppWeb.FeedLive.Index do
         </div>
 
         <div :if={@live_action in [:global, :following]}>
-
-          <div :for={request <- @requests}>
+          <ul class="timeline timeline-vertical timeline-compact">
+            <li :for={{request, idx} <- Enum.with_index(@requests)}>
+              <hr :if={idx > 0} />
+              <div class="timeline-start text-xs text-base-content/60 pt-2">
+                {format_timeline_date(request.inserted_at)}
+              </div>
+              <div class="timeline-middle text-base-content/70">
+                <.icon name="hero-minus-circle" class="size-4" />
+              </div>
+              <div class="timeline-end w-full pb-4">
             <div
               :if={@live_action == :following and not Enum.empty?(request.re_prays || [])}
               class="text-xs text-base-content/50 ml-4 mt-2"
@@ -142,7 +267,10 @@ defmodule PrayerAppWeb.FeedLive.Index do
               Alguien hizo re-pray
             </div>
 
-            <div class="card bg-base-100 shadow-sm mb-4 border border-base-200">
+            <div class={[
+              "card bg-base-100 shadow-sm mb-4 border",
+              if(request.testimony, do: "border-success", else: "border-base-200")
+            ]}>
               <div class="card-body">
                 <div class="flex items-center gap-3 mb-2">
                   <div class="avatar placeholder">
@@ -156,7 +284,44 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                 <p class="text-base leading-relaxed">{request.content}</p>
 
-                <div class="card-actions justify-start mt-4">
+                <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-200 bg-base-100">
+                  <summary class="collapse-title text-sm font-medium">Historial</summary>
+                  <div class="collapse-content">
+                    <% events = history_events(request) %>
+                    <ul class="timeline timeline-vertical timeline-compact">
+                      <li :for={{event, idx} <- Enum.with_index(events)}>
+                        <hr :if={idx > 0} />
+
+                        <%= case event do %>
+                          <% {:created, at, _} -> %>
+                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-middle text-base-content/70">
+                              <.icon name="hero-minus-circle" class="size-4" />
+                            </div>
+                            <div class="timeline-end timeline-box shadow-sm">Pedido creado</div>
+
+                          <% {:update, at, content} -> %>
+                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-middle text-base-content/70">
+                              <.icon name="hero-minus-circle" class="size-4" />
+                            </div>
+                            <div class="timeline-end timeline-box shadow-sm">{content}</div>
+
+                          <% {:testimony, at, content} -> %>
+                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-middle text-success">
+                              <.icon name="hero-check-circle" class="size-4" />
+                            </div>
+                            <div class="timeline-end timeline-box shadow-sm border-success/30">{content}</div>
+                        <% end %>
+
+                        <hr :if={idx < length(events) - 1} />
+                      </li>
+                    </ul>
+                  </div>
+                </details>
+
+                <div class="card-actions justify-start items-center mt-4 gap-1 flex-nowrap">
                   <button type="button" class="btn btn-ghost btn-sm rounded-full">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -187,10 +352,100 @@ defmodule PrayerAppWeb.FeedLive.Index do
                       />
                     </svg>
                   </button>
+                  <button
+                    :if={owns_request?(request, @current_user)}
+                    type="button"
+                    class="btn btn-ghost btn-sm rounded-full"
+                    phx-click="toggle_update_form"
+                    phx-value-request_id={request.id}
+                    aria-label="Agregar update"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="opacity:1;"
+                    >
+                      <path
+                        fill="none"
+                        d="M4.266 16.06a8.92 8.92 0 0 0 3.915 3.978a8.7 8.7 0 0 0 5.471.832a8.8 8.8 0 0 0 4.887-2.64a9.07 9.07 0 0 0 2.388-5.079a9.14 9.14 0 0 0-1.044-5.53a8.9 8.9 0 0 0-4.069-3.815a8.7 8.7 0 0 0-5.5-.608c-1.85.401-3.366 1.313-4.62 2.755c-.151.16-.735.806-1.22 1.781M7.5 8l-3.609.72L3 5m9 4v4l3 2"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    :if={owns_request?(request, @current_user)}
+                    type="button"
+                    class={["btn btn-ghost btn-sm rounded-full", if(request.testimony, do: "btn-disabled opacity-40", else: "")]}
+                    phx-click="toggle_testimony_form"
+                    phx-value-request_id={request.id}
+                    aria-label="Agregar testimonio"
+                    disabled={!!request.testimony}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 48 48"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="opacity:1;"
+                    >
+                      <path
+                        fill="none"
+                        d="m23.52 31.518l3.227 1.188h11.781c3.098 0 3.872 2.488 3.849 3.595L29.283 41.19c-.772.288-1.678.223-2.472 0l-10.724-3.01V22.14h3.35l12.95 4.881c2.24.844 1.44 3.852-.537 4.06M9.04 22.217c1.96 0 3.54 1.605 3.54 3.6v12.14c0 1.994-1.58 3.6-3.54 3.6c-1.961 0-3.54-1.606-3.54-3.6v-12.14c0-1.995 1.579-3.6 3.54-3.6m25.392 1.14l5.659-5.682c2.148-2.158 2.452-3.649 2.405-5.966c-.055-2.714-2.618-5.13-5.763-5.262c-1.426-.06-3.147.595-4.802 1.983c-1.655-1.388-3.376-2.043-4.802-1.983c-3.145.132-5.708 2.548-5.763 5.262c-.047 2.317.257 3.808 2.405 5.966l5.66 5.682c.588.59 1.291 1.053 2.5 1.053s1.912-.462 2.5-1.053"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div
+                  :if={MapSet.member?(@open_update_forms, request.id)}
+                  class="mt-3 p-3 rounded-xl border border-base-200 bg-base-100"
+                >
+                  <form phx-submit="save_update" class="space-y-2">
+                    <input type="hidden" name="request_id" value={request.id} />
+                    <textarea
+                      name="content"
+                      class="textarea textarea-bordered w-full"
+                      rows="3"
+                      placeholder="Escribe una actualizacion..."
+                      required
+                    ></textarea>
+                    <button type="submit" class="btn btn-neutral btn-sm">Guardar update</button>
+                  </form>
+                </div>
+
+                <div
+                  :if={MapSet.member?(@open_testimony_forms, request.id) and is_nil(request.testimony)}
+                  class="mt-3 p-3 rounded-xl border border-base-200 bg-base-100"
+                >
+                  <form phx-submit="save_testimony" class="space-y-2">
+                    <input type="hidden" name="request_id" value={request.id} />
+                    <textarea
+                      name="content"
+                      class="textarea textarea-bordered w-full"
+                      rows="3"
+                      placeholder="Comparte tu testimonio..."
+                      required
+                    ></textarea>
+                    <button type="submit" class="btn btn-neutral btn-sm">Guardar testimonio</button>
+                  </form>
                 </div>
               </div>
             </div>
-          </div>
+              </div>
+              <hr :if={idx < length(@requests) - 1} />
+            </li>
+          </ul>
         </div>
 
         <div :if={@current_view == :search} class="card bg-base-100 shadow-sm border border-base-200">
@@ -228,4 +483,57 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp avatar_initial(_), do: "U"
+
+  defp history_events(request) do
+    updates =
+      request.updates
+      |> List.wrap()
+      |> Enum.sort_by(& &1.inserted_at || ~N[0000-01-01 00:00:00])
+
+    testimony_events =
+      case request.testimony do
+        nil -> []
+        testimony -> [{:testimony, testimony.inserted_at, testimony.content}]
+      end
+
+    [{:created, request.inserted_at, nil}] ++
+      Enum.map(updates, &{:update, &1.inserted_at, &1.content}) ++
+      testimony_events
+  end
+
+  defp owns_request?(%PrayerRequest{user_id: user_id}, %{id: current_user_id}) do
+    user_id == current_user_id
+  end
+
+  defp owns_request?(_, _), do: false
+
+  defp editable_request(socket, request_id) do
+    with {id, ""} <- Integer.parse(to_string(request_id)),
+         %PrayerRequest{} = request <- Enum.find(socket.assigns.requests, &(&1.id == id)),
+         true <- owns_request?(request, socket.assigns.current_user) do
+      {:ok, request}
+    else
+      _ -> :error
+    end
+  end
+
+  defp toggle_set(set, id) do
+    if MapSet.member?(set, id) do
+      MapSet.delete(set, id)
+    else
+      MapSet.put(set, id)
+    end
+  end
+
+  defp format_timeline_date(nil), do: "Sin fecha"
+
+  defp format_timeline_date(%NaiveDateTime{} = date_time) do
+    Calendar.strftime(date_time, "%d/%m/%y %H:%M")
+  end
+
+  defp format_timeline_date(%DateTime{} = date_time) do
+    date_time
+    |> DateTime.to_naive()
+    |> Calendar.strftime("%d/%m/%y %H:%M")
+  end
 end

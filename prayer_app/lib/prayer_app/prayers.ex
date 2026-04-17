@@ -18,7 +18,11 @@ defmodule PrayerApp.Prayers do
 
   """
   def list_prayer_requests do
-    Repo.all(from p in PrayerRequest, order_by: [desc: p.inserted_at], preload: [:user, :re_prays])
+    Repo.all(
+      from p in PrayerRequest,
+        order_by: [desc: p.inserted_at],
+        preload: [:user, :re_prays, :updates, :testimony]
+    )
   end
 
   @doc """
@@ -312,13 +316,15 @@ defmodule PrayerApp.Prayers do
             pr.id in subquery(reprayed_request_ids_query),
         distinct: true,
         order_by: [desc: pr.inserted_at],
-        preload: [:user]
+        preload: [:user, :updates, :testimony]
 
     requests = PrayerApp.Repo.all(feed_query)
 
     PrayerApp.Repo.preload(
       requests,
       [
+        :updates,
+        :testimony,
         re_prays:
           from(rp in PrayerApp.Interactions.RePray,
             where: rp.user_id in subquery(followed_ids_query),
