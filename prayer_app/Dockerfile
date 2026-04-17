@@ -2,7 +2,7 @@
 
 ARG ELIXIR_VERSION=1.15.7
 ARG OTP_VERSION=26.2.5
-ARG DEBIAN_VERSION=bookworm-20240311
+ARG DEBIAN_VERSION=bookworm
 
 FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION} AS build
 
@@ -28,7 +28,7 @@ RUN mix assets.deploy
 RUN mix compile
 RUN mix release
 
-FROM debian:bookworm-20240311-slim AS app
+FROM debian:bookworm-slim AS app
 
 RUN apt-get update -y && apt-get install -y ca-certificates libstdc++6 openssl libncurses6 locales && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
