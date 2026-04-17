@@ -389,12 +389,22 @@ defmodule PrayerAppWeb.FeedLive.Index do
     ~H"""
     <Layouts.app flash={@flash} live_action={@live_action} current_scope={assigns[:current_scope] || nil}>
       <div class="max-w-2xl mx-auto py-8 px-4 sm:px-0 pb-24">
+        <div :if={@live_action in [:global, :following]} class="mb-6 px-1">
+          <p class="text-xs uppercase tracking-[0.12em] text-base-content/50">
+            {if @live_action == :following, do: "Following", else: "Global feed"}
+          </p>
+          <h1 class="text-4xl leading-[1.12] font-medium mt-1">
+            {if @live_action == :following, do: "People you pray with", else: "Prayer requests"}
+          </h1>
+        </div>
+
         <div :if={@live_action == :new}>
           <div class="mb-6 px-1">
-            <h1 class="text-2xl font-semibold">Nuevo Pedido de Oracion</h1>
+            <p class="text-xs uppercase tracking-[0.12em] text-base-content/50">Crear</p>
+            <h1 class="text-4xl leading-[1.12] font-medium mt-1">Nuevo pedido de oración</h1>
           </div>
 
-          <div class="card bg-base-100 shadow-sm mb-8">
+          <div class="card bg-base-100 shadow-sm mb-8 border border-base-300">
             <div class="card-body">
               <.form for={@form} phx-submit="save_prayer">
                 <textarea
@@ -419,11 +429,11 @@ defmodule PrayerAppWeb.FeedLive.Index do
                       value="true"
                       class="checkbox checkbox-sm"
                     />
-                    <span class="label-text">Postear como anonimo</span>
+                    <span class="label-text">Postear como anónimo</span>
                   </label>
 
-                  <button type="submit" class="btn btn-neutral btn-sm rounded-full">
-                    Pedir Oracion
+                  <button type="submit" class="btn btn-primary btn-prayer-cta">
+                    Pedir Oración
                   </button>
                 </div>
               </.form>
@@ -634,7 +644,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                       placeholder="Escribe una actualizacion..."
                       required
                     ></textarea>
-                    <button type="submit" class="btn btn-neutral btn-sm">Guardar update</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Guardar update</button>
                   </form>
                 </div>
 
@@ -651,7 +661,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                       placeholder="Comparte tu testimonio..."
                       required
                     ></textarea>
-                    <button type="submit" class="btn btn-neutral btn-sm">Guardar testimonio</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Guardar testimonio</button>
                   </form>
                 </div>
               </div>
@@ -663,6 +673,11 @@ defmodule PrayerAppWeb.FeedLive.Index do
         </div>
 
         <div :if={@current_view == :search}>
+          <div class="mb-4 px-1">
+            <p class="text-xs uppercase tracking-[0.12em] text-base-content/50">Discover</p>
+            <h1 class="text-4xl leading-[1.12] font-medium mt-1">Buscar personas</h1>
+          </div>
+
           <form phx-change="search" phx-submit="search" class="mb-6">
             <div class="relative">
               <.icon name="hero-magnifying-glass" class="absolute left-4 top-3.5 w-5 h-5 text-base-content/40" />
@@ -708,6 +723,10 @@ defmodule PrayerAppWeb.FeedLive.Index do
         </div>
 
         <div :if={@current_view == :profile} class="space-y-4">
+          <div class="px-1">
+            <p class="text-xs uppercase tracking-[0.12em] text-base-content/50">Profile</p>
+          </div>
+
           <div class="card bg-base-100 shadow-sm border border-base-content/25 rounded-[2rem]">
             <div class="card-body">
               <div class="flex items-start justify-between gap-3 sm:gap-4">

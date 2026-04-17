@@ -44,24 +44,24 @@ defmodule PrayerAppWeb.Layouts do
     </main>
 
     <div :if={assigns[:live_action] in [:global, :following, :new, :search, :profile, :user_profile]}>
-      <div class="fixed bottom-0 left-0 z-50 w-full h-16 bg-base-100 border-t border-base-200 flex justify-around items-center">
-        <.link patch={~p"/"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :global, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+      <div class="fixed bottom-0 left-0 z-50 w-full h-18 bg-base-100/95 backdrop-blur border-t border-base-300 px-2 flex justify-around items-center shadow-[0_-8px_24px_rgba(20,20,19,0.06)]">
+        <.link patch={~p"/"} class={["flex flex-col items-center justify-center flex-1 h-full rounded-xl transition-colors", if(assigns[:live_action] == :global, do: "text-primary", else: "text-base-content/45 hover:text-base-content/70")]}>
           <.icon name="hero-globe-americas" class="w-7 h-7" />
         </.link>
 
-        <.link patch={~p"/following"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :following, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+        <.link patch={~p"/following"} class={["flex flex-col items-center justify-center flex-1 h-full rounded-xl transition-colors", if(assigns[:live_action] == :following, do: "text-primary", else: "text-base-content/45 hover:text-base-content/70")]}>
           <.icon name="hero-home" class="w-7 h-7" />
         </.link>
 
-        <.link patch={~p"/new"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :new, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+        <.link patch={~p"/new"} class={["flex flex-col items-center justify-center flex-1 h-full rounded-xl transition-colors", if(assigns[:live_action] == :new, do: "text-primary", else: "text-base-content/45 hover:text-base-content/70")]}>
           <.icon name="hero-plus-circle" class="w-7 h-7" />
         </.link>
 
-        <.link patch={~p"/search"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] == :search, do: "text-neutral font-bold", else: "text-base-content/40")]}>
+        <.link patch={~p"/search"} class={["flex flex-col items-center justify-center flex-1 h-full rounded-xl transition-colors", if(assigns[:live_action] == :search, do: "text-primary", else: "text-base-content/45 hover:text-base-content/70")]}>
           <.icon name="hero-magnifying-glass" class="w-7 h-7" />
         </.link>
 
-        <.link patch={~p"/profile"} class={["flex flex-col items-center justify-center flex-1 h-full", if(assigns[:live_action] in [:profile, :user_profile], do: "text-neutral font-bold", else: "text-base-content/40")]}>
+        <.link patch={~p"/profile"} class={["flex flex-col items-center justify-center flex-1 h-full rounded-xl transition-colors", if(assigns[:live_action] in [:profile, :user_profile], do: "text-primary", else: "text-base-content/45 hover:text-base-content/70")]}>
           <.icon name="hero-user" class="w-7 h-7" />
         </.link>
       </div>

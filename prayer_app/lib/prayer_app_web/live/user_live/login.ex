@@ -6,11 +6,12 @@ defmodule PrayerAppWeb.UserLive.Login do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="min-h-screen flex items-center justify-center px-4 py-10">
-        <div class="w-full max-w-md card bg-base-100 border border-base-content/20 rounded-[2rem] shadow-sm">
-          <div class="card-body p-6 sm:p-8 space-y-4">
-            <div class="text-center space-y-1">
-              <p class="text-3xl font-black tracking-tight">Re-Pray</p>
-              <p class="text-sm text-base-content/70">
+        <div class="w-full max-w-md card bg-base-100 border border-base-300 rounded-[2rem] shadow-sm">
+          <div class="card-body p-6 sm:p-8 space-y-5">
+            <div class="text-center space-y-2">
+              <p class="text-xs uppercase tracking-[0.12em] text-base-content/50">Welcome back</p>
+              <p class="text-4xl leading-[1.1] font-medium tracking-tight">Re-Pray</p>
+              <p class="text-[15px] leading-relaxed text-base-content/70">
                 Una app para compartir pedidos, testimonios y seguir personas para orar juntos cada dia.
               </p>
             </div>
@@ -60,7 +61,7 @@ defmodule PrayerAppWeb.UserLive.Login do
               <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
                 Ingresar y recordar sesión <span aria-hidden="true">→</span>
               </.button>
-              <.button class="btn btn-primary btn-soft w-full mt-2">
+              <.button class="btn btn-secondary w-full mt-2 border border-base-300">
                 Ingresar solo esta vez
               </.button>
             </.form>
