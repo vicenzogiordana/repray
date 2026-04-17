@@ -369,7 +369,14 @@ defmodule PrayerAppWeb.FeedLive.Index do
               :if={@live_action == :following and not Enum.empty?(request.re_prays || [])}
               class="text-xs text-base-content/50 ml-4 mt-2"
             >
-              Alguien hizo re-pray
+              <% repray_user = latest_repray_user(request) %>
+              <span :if={is_nil(repray_user)}>Alguien hizo re-pray</span>
+              <span :if={not is_nil(repray_user)}>
+                <.link patch={profile_path(repray_user, @current_user)} class="hover:underline font-medium">
+                  {display_name_from_user(repray_user)}
+                </.link>
+                hizo re-pray
+              </span>
             </div>
 
             <div class={[
@@ -836,6 +843,13 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp user_initial(_), do: "U"
+
+  defp latest_repray_user(request) do
+    request
+    |> Map.get(:re_prays, [])
+    |> List.wrap()
+    |> Enum.find_value(fn repray -> Map.get(repray, :user) end)
+  end
 
   defp profile_data_for(profile_user) do
     profile_requests = Prayers.list_user_requests(profile_user.id)
