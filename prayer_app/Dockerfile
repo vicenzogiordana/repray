@@ -1,10 +1,8 @@
 # syntax=docker/dockerfile:1
 
 ARG ELIXIR_VERSION=1.15.7
-ARG OTP_VERSION=26.2.5
-ARG DEBIAN_VERSION=bookworm
 
-FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION} AS build
+FROM elixir:${ELIXIR_VERSION}-otp-26-bookworm AS build
 
 RUN apt-get update -y && apt-get install -y build-essential git curl ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
