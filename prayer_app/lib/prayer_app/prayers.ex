@@ -25,6 +25,15 @@ defmodule PrayerApp.Prayers do
     )
   end
 
+  def list_user_requests(user_id) do
+    Repo.all(
+      from p in PrayerRequest,
+        where: p.user_id == ^user_id,
+        order_by: [desc: p.inserted_at],
+        preload: [:user, :re_prays, :updates, :testimony]
+    )
+  end
+
   @doc """
   Gets a single prayer_request.
 

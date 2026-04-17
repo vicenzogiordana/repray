@@ -117,6 +117,15 @@ defmodule PrayerApp.Interactions do
     Repo.all(RePray)
   end
 
+  def list_user_re_prays(user_id) do
+    Repo.all(
+      from rp in RePray,
+        where: rp.user_id == ^user_id,
+        order_by: [desc: rp.inserted_at],
+        preload: [prayer_request: [:user, :re_prays, :updates, :testimony]]
+    )
+  end
+
   @doc """
   Gets a single re_pray.
 

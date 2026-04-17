@@ -1,8 +1,10 @@
 defmodule PrayerAppWeb.FeedLive.Index do
   use PrayerAppWeb, :live_view
 
+  alias PrayerApp.Interactions
   alias PrayerApp.Prayers
   alias PrayerApp.Prayers.PrayerRequest
+  alias PrayerApp.Social
 
   @impl true
   def mount(_params, _session, socket) do
@@ -20,7 +22,11 @@ defmodule PrayerAppWeb.FeedLive.Index do
      |> assign(:current_user, current_user)
       |> assign(:current_view, :global)
       |> assign(:open_update_forms, MapSet.new())
-      |> assign(:open_testimony_forms, MapSet.new())}
+      |> assign(:open_testimony_forms, MapSet.new())
+      |> assign(:profile_tab, :requests)
+      |> assign(:profile_requests, [])
+      |> assign(:profile_repray_requests, [])
+      |> assign(:profile_stats, %{requests: 0, followers: 0, following: 0})}
   end
 
   @impl true
@@ -61,11 +67,29 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp apply_action(socket, :profile, _params) do
+    current_user = socket.assigns.current_user
+    profile_requests = Prayers.list_user_requests(current_user.id)
+
+    profile_repray_requests =
+      current_user.id
+      |> Interactions.list_user_re_prays()
+      |> Enum.map(& &1.prayer_request)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq_by(& &1.id)
+
     socket
     |> assign(:current_view, :profile)
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
+    |> assign(:profile_tab, :requests)
+    |> assign(:profile_requests, profile_requests)
+    |> assign(:profile_repray_requests, profile_repray_requests)
+    |> assign(:profile_stats, %{
+      requests: length(profile_requests),
+      followers: Social.count_followers(current_user.id),
+      following: Social.count_following(current_user.id)
+    })
   end
 
   @impl true
@@ -200,6 +224,12 @@ defmodule PrayerAppWeb.FeedLive.Index do
       _ ->
         {:noreply, socket}
     end
+  end
+
+  @impl true
+  def handle_event("set_profile_tab", %{"tab" => tab}, socket) do
+    profile_tab = if tab == "reprays", do: :reprays, else: :requests
+    {:noreply, assign(socket, :profile_tab, profile_tab)}
   end
 
   @impl true
@@ -455,10 +485,147 @@ defmodule PrayerAppWeb.FeedLive.Index do
           </div>
         </div>
 
-        <div :if={@current_view == :profile} class="card bg-base-100 shadow-sm border border-base-200">
-          <div class="card-body">
-            <h2 class="card-title">Perfil</h2>
-            <p class="text-base-content/60">Aqui iremos mostrando tu perfil.</p>
+        <div :if={@current_view == :profile} class="space-y-4">
+          <div class="card bg-base-100 shadow-sm border border-base-200 rounded-[2rem]">
+            <div class="card-body">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-4 flex-1">
+                  <div class="avatar placeholder">
+                    <div class="bg-base-300 text-base-content rounded-full w-20">
+                      <span class="text-2xl">{profile_initial(@current_user)}</span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-4 text-center flex-1">
+                    <div>
+                      <p class="font-semibold">{@profile_stats.requests}</p>
+                      <p class="text-xs text-base-content/60">Pedidos</p>
+                    </div>
+                    <div>
+                      <p class="font-semibold">{@profile_stats.followers}</p>
+                      <p class="text-xs text-base-content/60">Seguidores</p>
+                    </div>
+                    <div>
+                      <p class="font-semibold">{@profile_stats.following}</p>
+                      <p class="text-xs text-base-content/60">Seguidos</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="dropdown dropdown-end">
+                  <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm">
+                    <.icon name="hero-cog-6-tooth" class="size-5" />
+                  </div>
+                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] mt-2 w-44 p-2 shadow border border-base-200">
+                    <li><.link navigate={~p"/users/settings"}>Settings</.link></li>
+                    <li><.link href={~p"/users/log-out"} method="delete">Cerrar sesion</.link></li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <p class="font-semibold">{display_name_from_user(@current_user)}</p>
+                <p class="text-sm text-base-content/60">@{profile_username(@current_user)}</p>
+              </div>
+
+              <button type="button" class="btn btn-outline btn-sm w-full mt-4 rounded-[2rem]">Editar Perfil</button>
+            </div>
+          </div>
+
+          <div class="tabs tabs-boxed justify-center bg-base-100 border border-base-200 rounded-[2rem] p-1">
+            <button
+              type="button"
+              phx-click="set_profile_tab"
+              phx-value-tab="requests"
+              class={[
+                "tab gap-2 rounded-[2rem]",
+                if(@profile_tab == :requests, do: "tab-active", else: "")
+              ]}
+            >
+              <.icon name="hero-document-text" class="size-4" /> Mis Pedidos
+            </button>
+            <button
+              type="button"
+              phx-click="set_profile_tab"
+              phx-value-tab="reprays"
+              class={[
+                "tab gap-2 rounded-[2rem]",
+                if(@profile_tab == :reprays, do: "tab-active", else: "")
+              ]}
+            >
+              <.icon name="hero-arrow-path" class="size-4" /> Mis Re-prays
+            </button>
+          </div>
+
+          <% profile_items = if @profile_tab == :requests, do: @profile_requests, else: @profile_repray_requests %>
+
+          <div class="space-y-4" :if={profile_items == []}>
+            <div class="card bg-base-100 shadow-sm border border-base-200 rounded-[2rem]">
+              <div class="card-body text-center text-base-content/60">
+                No hay contenido para mostrar en esta pestana.
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4" :if={profile_items != []}>
+            <div :for={request <- profile_items} class={[
+              "card bg-base-100 shadow-sm border rounded-[2rem]",
+              if(request.testimony, do: "border-success", else: "border-base-200")
+            ]}>
+              <div class="card-body">
+                <div class="flex items-center justify-between gap-3 mb-2">
+                  <div class="flex items-center gap-3">
+                    <div class="avatar placeholder">
+                      <div class="bg-base-300 text-base-content rounded-full w-10">
+                        <span>{avatar_initial(request)}</span>
+                      </div>
+                    </div>
+                    <p class="font-semibold">{display_name(request)}</p>
+                  </div>
+
+                  <span :if={@profile_tab == :reprays} class="badge badge-outline">Re-pray</span>
+                </div>
+
+                <p class="text-base leading-relaxed">{request.content}</p>
+
+                <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-200 bg-base-100">
+                  <summary class="collapse-title text-sm font-medium">Historial</summary>
+                  <div class="collapse-content">
+                    <% events = history_events(request) %>
+                    <ul class="timeline timeline-vertical timeline-compact">
+                      <li :for={{event, idx} <- Enum.with_index(events)}>
+                        <hr :if={idx > 0} />
+
+                        <%= case event do %>
+                          <% {:created, at, _} -> %>
+                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-middle text-base-content/70">
+                              <.icon name="hero-minus-circle" class="size-4" />
+                            </div>
+                            <div class="timeline-end timeline-box shadow-sm">Pedido creado</div>
+
+                          <% {:update, at, content} -> %>
+                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-middle text-base-content/70">
+                              <.icon name="hero-minus-circle" class="size-4" />
+                            </div>
+                            <div class="timeline-end timeline-box shadow-sm">{content}</div>
+
+                          <% {:testimony, at, content} -> %>
+                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-middle text-success">
+                              <.icon name="hero-check-circle" class="size-4" />
+                            </div>
+                            <div class="timeline-end timeline-box shadow-sm border-success/30">{content}</div>
+                        <% end %>
+
+                        <hr :if={idx < length(events) - 1} />
+                      </li>
+                    </ul>
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -483,6 +650,32 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp avatar_initial(_), do: "U"
+
+  defp display_name_from_user(%{name: name}) when is_binary(name) and byte_size(name) > 0, do: name
+  defp display_name_from_user(_), do: "Usuario"
+
+  defp profile_username(%{username: username}) when is_binary(username) and byte_size(username) > 0,
+    do: username
+
+  defp profile_username(%{email: email}) when is_binary(email) do
+    email
+    |> String.split("@")
+    |> List.first()
+    |> to_string()
+    |> String.replace(~r/[^a-zA-Z0-9_\.]/, "")
+    |> String.downcase()
+  end
+
+  defp profile_username(_), do: "usuario"
+
+  defp profile_initial(%{name: name}) when is_binary(name) and byte_size(name) > 0 do
+    name
+    |> String.trim()
+    |> String.first()
+    |> String.upcase()
+  end
+
+  defp profile_initial(_), do: "U"
 
   defp history_events(request) do
     updates =

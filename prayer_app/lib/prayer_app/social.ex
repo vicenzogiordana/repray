@@ -21,6 +21,14 @@ defmodule PrayerApp.Social do
     Repo.all(Follow)
   end
 
+  def count_followers(user_id) do
+    Repo.aggregate(from(f in Follow, where: f.followed_id == ^user_id), :count)
+  end
+
+  def count_following(user_id) do
+    Repo.aggregate(from(f in Follow, where: f.follower_id == ^user_id), :count)
+  end
+
   @doc """
   Gets a single follow.
 
