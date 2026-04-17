@@ -591,7 +591,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
               phx-value-id={user.id}
               class={[
                 "btn btn-sm rounded-full",
-                if(user.id in @followed_ids, do: "btn-neutral", else: "btn-outline")
+                if(user.id in @followed_ids, do: "btn-outline", else: "btn-neutral")
               ]}
             >
               {if user.id in @followed_ids, do: "Siguiendo", else: "Seguir"}
@@ -659,7 +659,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                 phx-value-id={@profile_user.id}
                 class={[
                   "btn btn-sm w-full mt-4 rounded-[2rem]",
-                  if(@profile_user.id in @followed_ids, do: "btn-neutral", else: "btn-outline")
+                  if(@profile_user.id in @followed_ids, do: "btn-outline", else: "btn-neutral")
                 ]}
               >
                 {if @profile_user.id in @followed_ids, do: "Siguiendo", else: "Seguir"}
