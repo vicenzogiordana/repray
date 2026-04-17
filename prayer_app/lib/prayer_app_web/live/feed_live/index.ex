@@ -368,7 +368,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
         <div :if={@live_action in [:global, :following]}>
           <ul class="timeline timeline-vertical timeline-compact">
             <li :for={{request, idx} <- Enum.with_index(@requests)}>
-              <hr :if={idx > 0} />
+              <hr :if={idx > 0} class="border-base-content/25" />
               <div class="timeline-start text-xs text-base-content/60 pt-2">
                 {format_timeline_date(request.inserted_at)}
               </div>
@@ -378,7 +378,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
               <div class="timeline-end w-full pb-4">
             <div
               :if={@live_action == :following and not Enum.empty?(request.re_prays || [])}
-              class="text-xs text-base-content/50 ml-4 mt-2"
+              class="text-xs text-base-content/50 ml-4 mt-2 mb-3"
             >
               <% repray_user = latest_repray_user(request) %>
               <span :if={is_nil(repray_user)}>Alguien hizo re-pray</span>
@@ -391,8 +391,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
             </div>
 
             <div class={[
-              "card bg-base-100 shadow-sm mb-4 border",
-              if(request.testimony, do: "border-success", else: "border-base-200")
+              "card bg-base-100 shadow-sm mb-4 border rounded-[2rem]",
+              if(request.testimony, do: "border-success", else: "border-base-content/25")
             ]}>
               <div class="card-body">
                 <div class="flex items-center gap-3 mb-2">
@@ -412,13 +412,13 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                 <p class="text-base leading-relaxed">{request.content}</p>
 
-                <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-200 bg-base-100">
+                <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-content/25 bg-base-100">
                   <summary class="collapse-title text-sm font-medium">Historial</summary>
                   <div class="collapse-content">
                     <% events = history_events(request) %>
                     <ul class="timeline timeline-vertical timeline-compact">
                       <li :for={{event, idx} <- Enum.with_index(events)}>
-                        <hr :if={idx > 0} />
+                        <hr :if={idx > 0} class="border-base-content/25" />
 
                         <%= case event do %>
                           <% {:created, at, _} -> %>
@@ -443,7 +443,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                             <div class="timeline-end timeline-box shadow-sm border-success/30">{content}</div>
                         <% end %>
 
-                        <hr :if={idx < length(events) - 1} />
+                        <hr :if={idx < length(events) - 1} class="border-base-content/25" />
                       </li>
                     </ul>
                   </div>
@@ -541,7 +541,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                 <div
                   :if={MapSet.member?(@open_update_forms, request.id)}
-                  class="mt-3 p-3 rounded-xl border border-base-200 bg-base-100"
+                  class="mt-3 p-3 rounded-xl border border-base-content/25 bg-base-100"
                 >
                   <form phx-submit="save_update" class="space-y-2">
                     <input type="hidden" name="request_id" value={request.id} />
@@ -558,7 +558,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                 <div
                   :if={MapSet.member?(@open_testimony_forms, request.id) and is_nil(request.testimony)}
-                  class="mt-3 p-3 rounded-xl border border-base-200 bg-base-100"
+                  class="mt-3 p-3 rounded-xl border border-base-content/25 bg-base-100"
                 >
                   <form phx-submit="save_testimony" class="space-y-2">
                     <input type="hidden" name="request_id" value={request.id} />
@@ -575,7 +575,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
               </div>
             </div>
               </div>
-              <hr :if={idx < length(@requests) - 1} />
+              <hr :if={idx < length(@requests) - 1} class="border-base-content/25" />
             </li>
           </ul>
         </div>
@@ -596,7 +596,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
             </div>
           </form>
 
-          <div :for={user <- @search_results} class="flex items-center justify-between p-4 bg-base-100 rounded-[2rem] shadow-sm border border-base-200 mb-3">
+          <div :for={user <- @search_results} class="flex items-center justify-between p-4 bg-base-100 rounded-[2rem] shadow-sm border border-base-content/25 mb-3">
             <.link patch={profile_path(user, @current_user)} class="flex items-center gap-4 min-w-0">
               <div class="bg-base-300 text-base-content text-lg font-bold rounded-full w-12 h-12 grid place-items-center text-center overflow-hidden shrink-0">
                 <span class="block leading-none select-none">{user_initial(user)}</span>
@@ -626,7 +626,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
         </div>
 
         <div :if={@current_view == :profile} class="space-y-4">
-          <div class="card bg-base-100 shadow-sm border border-base-200 rounded-[2rem]">
+          <div class="card bg-base-100 shadow-sm border border-base-content/25 rounded-[2rem]">
             <div class="card-body">
               <div class="flex items-start justify-between gap-3 sm:gap-4">
                 <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
@@ -654,7 +654,17 @@ defmodule PrayerAppWeb.FeedLive.Index do
                   <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm">
                     <.icon name="hero-cog-6-tooth" class="size-5" />
                   </div>
-                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] mt-2 w-44 p-2 shadow border border-base-200">
+                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] mt-2 w-44 p-2 shadow border border-base-content/25">
+                    <li>
+                      <button type="button" phx-click={JS.dispatch("phx:set-theme")} data-phx-theme="lofi">
+                        Modo claro
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button" phx-click={JS.dispatch("phx:set-theme")} data-phx-theme="dark">
+                        Modo nocturno
+                      </button>
+                    </li>
                     <li><.link navigate={~p"/users/settings"}>Settings</.link></li>
                     <li><.link href={~p"/users/log-out"} method="delete">Cerrar sesion</.link></li>
                   </ul>
@@ -689,7 +699,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
             </div>
           </div>
 
-          <div class="tabs tabs-boxed justify-center bg-base-100 border border-base-200 rounded-[2rem] p-1">
+          <div class="tabs tabs-boxed justify-center bg-base-100 border border-base-content/25 rounded-[2rem] p-1">
             <button
               type="button"
               phx-click="set_profile_tab"
@@ -717,7 +727,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
           <% profile_items = if @profile_tab == :requests, do: @profile_requests, else: @profile_repray_requests %>
 
           <div class="space-y-4" :if={profile_items == []}>
-            <div class="card bg-base-100 shadow-sm border border-base-200 rounded-[2rem]">
+            <div class="card bg-base-100 shadow-sm border border-base-content/25 rounded-[2rem]">
               <div class="card-body text-center text-base-content/60">
                 No hay contenido para mostrar en esta pestana.
               </div>
@@ -727,7 +737,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
           <div class="space-y-4" :if={profile_items != []}>
             <div :for={request <- profile_items} class={[
               "card bg-base-100 shadow-sm border rounded-[2rem]",
-              if(request.testimony, do: "border-success", else: "border-base-200")
+              if(request.testimony, do: "border-success", else: "border-base-content/25")
             ]}>
               <div class="card-body">
                 <div class="flex items-center justify-between gap-3 mb-2">
@@ -756,13 +766,13 @@ defmodule PrayerAppWeb.FeedLive.Index do
                   <span>{format_compact_count(counts.reprays)} re-prays</span>
                 </div>
 
-                <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-200 bg-base-100">
+                <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-content/25 bg-base-100">
                   <summary class="collapse-title text-sm font-medium">Historial</summary>
                   <div class="collapse-content">
                     <% events = history_events(request) %>
                     <ul class="timeline timeline-vertical timeline-compact">
                       <li :for={{event, idx} <- Enum.with_index(events)}>
-                        <hr :if={idx > 0} />
+                        <hr :if={idx > 0} class="border-base-content/25" />
 
                         <%= case event do %>
                           <% {:created, at, _} -> %>
@@ -787,7 +797,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                             <div class="timeline-end timeline-box shadow-sm border-success/30">{content}</div>
                         <% end %>
 
-                        <hr :if={idx < length(events) - 1} />
+                        <hr :if={idx < length(events) - 1} class="border-base-content/25" />
                       </li>
                     </ul>
                   </div>
