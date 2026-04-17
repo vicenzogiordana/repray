@@ -242,6 +242,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
   @impl true
   def handle_event("search", %{"query" => query}, socket) do
     query = String.trim(query || "")
+    followed_ids = Social.list_followed_ids(socket.assigns.current_user.id)
 
     results =
       if String.length(query) >= 2 do
@@ -253,28 +254,30 @@ defmodule PrayerAppWeb.FeedLive.Index do
     {:noreply,
      socket
      |> assign(:search_query, query)
-     |> assign(:search_results, results)}
+      |> assign(:search_results, results)
+      |> assign(:followed_ids, followed_ids)}
   end
 
   @impl true
   def handle_event("toggle_follow", %{"id" => followed_id_str}, socket) do
     follower_id = socket.assigns.current_user.id
-    followed_ids = socket.assigns.followed_ids
 
     case Integer.parse(to_string(followed_id_str)) do
       {followed_id, ""} ->
-        new_followed_ids =
-          if followed_id in followed_ids do
-            Social.unfollow(follower_id, followed_id)
-            List.delete(followed_ids, followed_id)
-          else
-            case Social.follow(follower_id, followed_id) do
-              {:ok, _} -> [followed_id | followed_ids]
-              {:error, _} -> followed_ids
-            end
-          end
+        followed_ids = Social.list_followed_ids(follower_id)
 
-        {:noreply, assign(socket, :followed_ids, new_followed_ids)}
+        if followed_id in followed_ids do
+            Social.unfollow(follower_id, followed_id)
+        else
+            case Social.follow(follower_id, followed_id) do
+              {:ok, _} -> :ok
+              {:error, _} -> :ok
+            end
+        end
+
+        refreshed_followed_ids = Social.list_followed_ids(follower_id)
+
+        {:noreply, assign(socket, :followed_ids, refreshed_followed_ids)}
 
       _ ->
         {:noreply, socket}
