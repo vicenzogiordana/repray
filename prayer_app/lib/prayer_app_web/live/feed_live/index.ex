@@ -852,7 +852,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp profile_data_for(profile_user) do
-    profile_requests = Prayers.list_user_requests(profile_user.id)
+    profile_requests = Prayers.list_user_profile_requests(profile_user.id)
 
     profile_repray_requests =
       profile_user.id
