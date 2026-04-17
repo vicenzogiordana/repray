@@ -378,10 +378,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
             ]}>
               <div class="card-body">
                 <div class="flex items-center gap-3 mb-2">
-                  <div class="avatar placeholder">
-                    <div class="bg-base-300 text-base-content rounded-full w-10 h-10 flex items-center justify-center">
-                      <span class="leading-none">{avatar_initial(request)}</span>
-                    </div>
+                  <div class="bg-base-300 text-base-content rounded-full w-10 h-10 grid place-items-center text-center overflow-hidden shrink-0">
+                    <span class="block leading-none select-none">{avatar_initial(request)}</span>
                   </div>
 
                   <.link
@@ -578,8 +576,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
           <div :for={user <- @search_results} class="flex items-center justify-between p-4 bg-base-100 rounded-[2rem] shadow-sm border border-base-200 mb-3">
             <.link patch={profile_path(user, @current_user)} class="flex items-center gap-4 min-w-0">
-              <div class="bg-base-300 text-lg font-bold rounded-full w-12 h-12 flex items-center justify-center shrink-0">
-                {user_initial(user)}
+              <div class="bg-base-300 text-base-content text-lg font-bold rounded-full w-12 h-12 grid place-items-center text-center overflow-hidden shrink-0">
+                <span class="block leading-none select-none">{user_initial(user)}</span>
               </div>
               <div class="min-w-0">
                 <p class="font-bold truncate">{user.name}</p>
@@ -610,10 +608,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
             <div class="card-body">
               <div class="flex items-start justify-between gap-3 sm:gap-4">
                 <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                  <div class="avatar placeholder">
-                    <div class="bg-base-300 text-base-content rounded-full w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center">
-                      <span class="text-xl sm:text-2xl">{profile_initial(@profile_user)}</span>
-                    </div>
+                  <div class="bg-base-300 text-base-content rounded-full w-14 h-14 sm:w-20 sm:h-20 grid place-items-center text-center overflow-hidden shrink-0">
+                    <span class="text-xl sm:text-2xl leading-none select-none">{profile_initial(@profile_user)}</span>
                   </div>
 
                   <div class="grid grid-cols-3 gap-2 sm:gap-4 text-center flex-1 min-w-0">
@@ -714,10 +710,8 @@ defmodule PrayerAppWeb.FeedLive.Index do
               <div class="card-body">
                 <div class="flex items-center justify-between gap-3 mb-2">
                   <div class="flex items-center gap-3">
-                    <div class="avatar placeholder">
-                      <div class="bg-base-300 text-base-content rounded-full w-10 h-10 flex items-center justify-center">
-                        <span class="leading-none">{avatar_initial(request)}</span>
-                      </div>
+                    <div class="bg-base-300 text-base-content rounded-full w-10 h-10 grid place-items-center text-center overflow-hidden shrink-0">
+                      <span class="block leading-none select-none">{avatar_initial(request)}</span>
                     </div>
                     <.link
                       :if={not request.is_anonymous and not is_nil(request.user)}
