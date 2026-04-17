@@ -32,6 +32,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
             |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
       |> assign(:profile_requests, [])
       |> assign(:profile_repray_requests, [])
+          |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(current_user.id))
         |> assign(:reprayed_request_ids, Interactions.list_user_re_pray_ids(current_user.id))
         |> assign(:interaction_counts, %{})
       |> assign(:profile_stats, %{requests: 0, followers: 0, following: 0})}
@@ -50,6 +51,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, requests)
+    |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(socket.assigns.current_user.id))
     |> assign(:reprayed_request_ids, Interactions.list_user_re_pray_ids(socket.assigns.current_user.id))
     |> assign(:interaction_counts, interaction_counts_for(requests))
   end
@@ -62,6 +64,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, requests)
+    |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(socket.assigns.current_user.id))
     |> assign(:reprayed_request_ids, Interactions.list_user_re_pray_ids(socket.assigns.current_user.id))
     |> assign(:interaction_counts, interaction_counts_for(requests))
   end
@@ -83,6 +86,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
+    |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(current_user.id))
     |> assign(:search_results, [])
     |> assign(:search_query, "")
     |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
@@ -103,6 +107,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:profile_user, current_user)
     |> assign(:is_own_profile, true)
     |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
+    |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(current_user.id))
     |> assign(:reprayed_request_ids, Interactions.list_user_re_pray_ids(current_user.id))
     |> assign(:profile_requests, profile_requests)
     |> assign(:profile_repray_requests, profile_repray_requests)
@@ -131,6 +136,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
         |> assign(:profile_user, profile_user)
         |> assign(:is_own_profile, profile_user.id == current_user.id)
         |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
+        |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(current_user.id))
         |> assign(:reprayed_request_ids, Interactions.list_user_re_pray_ids(current_user.id))
         |> assign(:profile_requests, profile_requests)
         |> assign(:profile_repray_requests, profile_repray_requests)
@@ -325,6 +331,33 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   @impl true
+  def handle_event("toggle_pray", %{"request_id" => request_id}, socket) do
+    with {id, ""} <- Integer.parse(to_string(request_id)) do
+      user_id = socket.assigns.current_user.id
+
+      case Interactions.toggle_pray(user_id, id) do
+        {:added, _} ->
+          {:noreply,
+           socket
+           |> update(:prayed_request_ids, fn ids -> Enum.uniq([id | ids]) end)
+           |> update_interaction_count(id, :prays, 1)}
+
+        {:removed, _} ->
+          {:noreply,
+           socket
+           |> update(:prayed_request_ids, fn ids -> List.delete(ids, id) end)
+           |> update_interaction_count(id, :prays, -1)}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, "No se pudo registrar la oracion")}
+      end
+    else
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("toggle_repray", %{"request_id" => request_id}, socket) do
     with {id, ""} <- Integer.parse(to_string(request_id)) do
       user_id = socket.assigns.current_user.id
@@ -485,7 +518,15 @@ defmodule PrayerAppWeb.FeedLive.Index do
                 <% counts = request_counts(@interaction_counts, request) %>
 
                 <div class="card-actions justify-start items-center mt-4 gap-1 flex-nowrap">
-                  <button type="button" class="btn btn-ghost btn-sm rounded-full gap-1">
+                  <button
+                    type="button"
+                    phx-click="toggle_pray"
+                    phx-value-request_id={request.id}
+                    class={[
+                      "btn btn-ghost btn-sm rounded-full gap-1",
+                      if(request.id in @prayed_request_ids, do: "text-primary", else: "")
+                    ]}
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 256 256"
