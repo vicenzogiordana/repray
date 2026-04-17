@@ -126,6 +126,38 @@ defmodule PrayerApp.Interactions do
     )
   end
 
+  def list_user_re_pray_ids(user_id) do
+    Repo.all(
+      from rp in RePray,
+        where: rp.user_id == ^user_id,
+        select: rp.prayer_request_id
+    )
+  end
+
+  def get_user_re_pray(user_id, prayer_request_id) do
+    Repo.get_by(RePray, user_id: user_id, prayer_request_id: prayer_request_id)
+  end
+
+  def toggle_re_pray(user_id, prayer_request_id, comment \\ "Re-pray") do
+    case get_user_re_pray(user_id, prayer_request_id) do
+      %RePray{} = re_pray ->
+        case delete_re_pray(re_pray) do
+          {:ok, _} -> {:removed, re_pray}
+          {:error, changeset} -> {:error, changeset}
+        end
+
+      nil ->
+        case create_re_pray(%{
+               user_id: user_id,
+               prayer_request_id: prayer_request_id,
+               comment: comment
+             }) do
+          {:ok, re_pray} -> {:added, re_pray}
+          {:error, changeset} -> {:error, changeset}
+        end
+    end
+  end
+
   @doc """
   Gets a single re_pray.
 

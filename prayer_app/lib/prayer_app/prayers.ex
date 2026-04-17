@@ -357,7 +357,7 @@ defmodule PrayerApp.Prayers do
 
     reprayed_request_ids_query =
       from rp in PrayerApp.Interactions.RePray,
-        where: rp.user_id in subquery(followed_ids_query),
+        where: rp.user_id in subquery(followed_ids_query) or rp.user_id == ^current_user.id,
         select: rp.prayer_request_id
 
     feed_query =
@@ -378,7 +378,7 @@ defmodule PrayerApp.Prayers do
         :testimony,
         re_prays:
           from(rp in PrayerApp.Interactions.RePray,
-            where: rp.user_id in subquery(followed_ids_query),
+            where: rp.user_id in subquery(followed_ids_query) or rp.user_id == ^current_user.id,
             order_by: [desc: rp.inserted_at],
             preload: [:user])
       ]
