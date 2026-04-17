@@ -488,31 +488,31 @@ defmodule PrayerAppWeb.FeedLive.Index do
         <div :if={@current_view == :profile} class="space-y-4">
           <div class="card bg-base-100 shadow-sm border border-base-200 rounded-[2rem]">
             <div class="card-body">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex items-center gap-4 flex-1">
+              <div class="flex items-start justify-between gap-3 sm:gap-4">
+                <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                   <div class="avatar placeholder">
-                    <div class="bg-base-300 text-base-content rounded-full w-20">
-                      <span class="text-2xl">{profile_initial(@current_user)}</span>
+                    <div class="bg-base-300 text-base-content rounded-full w-14 h-14 sm:w-20 sm:h-20">
+                      <span class="text-xl sm:text-2xl">{profile_initial(@current_user)}</span>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-3 gap-4 text-center flex-1">
+                  <div class="grid grid-cols-3 gap-2 sm:gap-4 text-center flex-1 min-w-0">
                     <div>
-                      <p class="font-semibold">{@profile_stats.requests}</p>
-                      <p class="text-xs text-base-content/60">Pedidos</p>
+                      <p class="font-semibold text-lg sm:text-xl leading-none">{@profile_stats.requests}</p>
+                      <p class="text-[11px] sm:text-xs text-base-content/60 leading-tight">Pedidos</p>
                     </div>
                     <div>
-                      <p class="font-semibold">{@profile_stats.followers}</p>
-                      <p class="text-xs text-base-content/60">Seguidores</p>
+                      <p class="font-semibold text-lg sm:text-xl leading-none">{@profile_stats.followers}</p>
+                      <p class="text-[11px] sm:text-xs text-base-content/60 leading-tight">Seguidores</p>
                     </div>
                     <div>
-                      <p class="font-semibold">{@profile_stats.following}</p>
-                      <p class="text-xs text-base-content/60">Seguidos</p>
+                      <p class="font-semibold text-lg sm:text-xl leading-none">{@profile_stats.following}</p>
+                      <p class="text-[11px] sm:text-xs text-base-content/60 leading-tight">Seguidos</p>
                     </div>
                   </div>
                 </div>
 
-                <div class="dropdown dropdown-end">
+                <div class="dropdown dropdown-end shrink-0">
                   <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm">
                     <.icon name="hero-cog-6-tooth" class="size-5" />
                   </div>
