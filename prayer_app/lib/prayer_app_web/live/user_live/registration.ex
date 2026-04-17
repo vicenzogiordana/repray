@@ -1,6 +1,5 @@
 defmodule PrayerAppWeb.UserLive.Registration do
   use PrayerAppWeb, :live_view
-  require Logger
 
   alias PrayerApp.Accounts
   alias PrayerApp.Accounts.User
@@ -93,23 +92,12 @@ defmodule PrayerAppWeb.UserLive.Registration do
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
     case Accounts.register_user(user_params) do
-      {:ok, user} ->
-        email_notice =
-          case Accounts.deliver_login_instructions(
-                 user,
-                 &url(~p"/users/log-in/#{&1}")
-               ) do
-            {:ok, _} ->
-              "An email was sent to #{user.email}, please access it to confirm your account."
-
-            {:error, reason} ->
-              Logger.warning("Registration email delivery failed for #{user.email}: #{inspect(reason)}")
-              "Your account was created. You can log in with your email and password."
-          end
+      {:ok, _user} ->
+        success_notice = "Cuenta creada correctamente. Ahora inicia sesion."
 
         {:noreply,
          socket
-         |> put_flash(:info, email_notice)
+         |> put_flash(:info, success_notice)
          |> push_navigate(to: ~p"/users/log-in")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
