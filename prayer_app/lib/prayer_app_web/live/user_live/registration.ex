@@ -8,60 +8,70 @@ defmodule PrayerAppWeb.UserLive.Registration do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm">
-        <div class="text-center">
-          <.header>
-            Register for an account
-            <:subtitle>
-              Already registered?
-              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-                Log in
-              </.link>
-              to your account now.
-            </:subtitle>
-          </.header>
+      <div class="min-h-screen flex items-center justify-center px-4 py-10">
+        <div class="w-full max-w-md card bg-base-100 border border-base-content/20 rounded-[2rem] shadow-sm">
+          <div class="card-body p-6 sm:p-8 space-y-4">
+            <div class="text-center space-y-1">
+              <p class="text-3xl font-black tracking-tight">Re-pray</p>
+              <p class="text-sm text-base-content/70">
+                Crea tu cuenta para compartir pedidos, seguir personas y orar juntos cada dia.
+              </p>
+            </div>
+
+            <div class="text-center">
+              <.header>
+                Crear cuenta
+                <:subtitle>
+                  ¿Ya tienes cuenta?
+                  <.link navigate={~p"/users/log-in"} class="font-semibold text-base-content hover:underline">
+                    Inicia sesión
+                  </.link>
+                </:subtitle>
+              </.header>
+            </div>
+
+            <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
+              <.input
+                field={@form[:name]}
+                type="text"
+                label="Nombre"
+                autocomplete="name"
+                required
+                phx-mounted={JS.focus()}
+              />
+
+              <.input
+                field={@form[:username]}
+                type="text"
+                label="Usuario"
+                autocomplete="username"
+                spellcheck="false"
+                required
+              />
+
+              <.input
+                field={@form[:email]}
+                type="email"
+                label="Email"
+                autocomplete="email"
+                spellcheck="false"
+                required
+              />
+
+              <.input
+                field={@form[:password]}
+                type="password"
+                label="Contrasena"
+                autocomplete="new-password"
+                required
+              />
+
+              <.button phx-disable-with="Creando cuenta..." class="btn btn-primary w-full">
+                Crear cuenta
+              </.button>
+            </.form>
+          </div>
         </div>
-
-        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
-          <.input
-            field={@form[:name]}
-            type="text"
-            label="Name"
-            autocomplete="name"
-            required
-            phx-mounted={JS.focus()}
-          />
-
-          <.input
-            field={@form[:username]}
-            type="text"
-            label="Username"
-            autocomplete="username"
-            spellcheck="false"
-            required
-          />
-
-          <.input
-            field={@form[:email]}
-            type="email"
-            label="Email"
-            autocomplete="email"
-            spellcheck="false"
-            required
-          />
-
-          <.input
-            field={@form[:password]}
-            type="password"
-            label="Password"
-            autocomplete="new-password"
-            required
-          />
-
-          <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
-            Create an account
-          </.button>
-        </.form>
       </div>
     </Layouts.app>
     """
