@@ -105,9 +105,16 @@ defmodule PrayerApp.Prayers do
 
   """
   def create_prayer_request(attrs \\ %{}) do
-    %PrayerRequest{}
-    |> PrayerRequest.changeset(attrs)
-    |> Repo.insert()
+    case %PrayerRequest{}
+         |> PrayerRequest.changeset(attrs)
+         |> Repo.insert() do
+      {:ok, prayer_request} = ok ->
+        broadcast_prayer_event(:prayer_request_created, prayer_request.id, prayer_request.user_id)
+        ok
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -201,9 +208,16 @@ defmodule PrayerApp.Prayers do
 
   """
   def create_update(attrs) do
-    %Update{}
-    |> Update.changeset(attrs)
-    |> Repo.insert()
+    case %Update{}
+         |> Update.changeset(attrs)
+         |> Repo.insert() do
+      {:ok, update_item} = ok ->
+        broadcast_prayer_event(:update_created, update_item.prayer_request_id, nil)
+        ok
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -297,9 +311,16 @@ defmodule PrayerApp.Prayers do
 
   """
   def create_testimony(attrs) do
-    %Testimony{}
-    |> Testimony.changeset(attrs)
-    |> Repo.insert()
+    case %Testimony{}
+         |> Testimony.changeset(attrs)
+         |> Repo.insert() do
+      {:ok, testimony_item} = ok ->
+        broadcast_prayer_event(:testimony_created, testimony_item.prayer_request_id, nil)
+        ok
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -382,6 +403,20 @@ defmodule PrayerApp.Prayers do
             order_by: [desc: rp.inserted_at],
             preload: [:user])
       ]
+    )
+  end
+
+  defp broadcast_prayer_event(event, request_id, user_id) when is_integer(request_id) do
+    Phoenix.PubSub.broadcast(
+      PrayerApp.PubSub,
+      "prayers",
+      {:prayer_event,
+       %{
+         event: event,
+         request_id: request_id,
+         user_id: user_id,
+         origin_pid: self()
+       }}
     )
   end
 end

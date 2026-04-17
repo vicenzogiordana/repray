@@ -133,13 +133,19 @@ defmodule PrayerApp.Interactions do
     case get_user_pray(user_id, prayer_request_id) do
       %Pray{} = pray ->
         case delete_pray(pray) do
-          {:ok, _} -> {:removed, pray}
+          {:ok, _} ->
+            broadcast_interaction_update(:prays, prayer_request_id, -1, user_id)
+            {:removed, pray}
+
           {:error, changeset} -> {:error, changeset}
         end
 
       nil ->
         case create_pray(%{user_id: user_id, prayer_request_id: prayer_request_id}) do
-          {:ok, pray} -> {:added, pray}
+          {:ok, pray} ->
+            broadcast_interaction_update(:prays, prayer_request_id, 1, user_id)
+            {:added, pray}
+
           {:error, changeset} -> {:error, changeset}
         end
     end
@@ -170,7 +176,10 @@ defmodule PrayerApp.Interactions do
     case get_user_re_pray(user_id, prayer_request_id) do
       %RePray{} = re_pray ->
         case delete_re_pray(re_pray) do
-          {:ok, _} -> {:removed, re_pray}
+          {:ok, _} ->
+            broadcast_interaction_update(:reprays, prayer_request_id, -1, user_id)
+            {:removed, re_pray}
+
           {:error, changeset} -> {:error, changeset}
         end
 
@@ -180,10 +189,29 @@ defmodule PrayerApp.Interactions do
                prayer_request_id: prayer_request_id,
                comment: comment
              }) do
-          {:ok, re_pray} -> {:added, re_pray}
+          {:ok, re_pray} ->
+            broadcast_interaction_update(:reprays, prayer_request_id, 1, user_id)
+            {:added, re_pray}
+
           {:error, changeset} -> {:error, changeset}
         end
     end
+  end
+
+  defp broadcast_interaction_update(metric, request_id, delta, user_id)
+       when metric in [:prays, :reprays] and is_integer(request_id) and is_integer(delta) do
+    Phoenix.PubSub.broadcast(
+      PrayerApp.PubSub,
+      "interactions",
+      {:interaction_updated,
+       %{
+         metric: metric,
+         request_id: request_id,
+         delta: delta,
+         user_id: user_id,
+         origin_pid: self()
+       }}
+    )
   end
 
   @doc """

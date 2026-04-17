@@ -11,6 +11,11 @@ defmodule PrayerAppWeb.FeedLive.Index do
   def mount(_params, _session, socket) do
     current_user = socket.assigns.current_scope.user
 
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(PrayerApp.PubSub, "interactions")
+      Phoenix.PubSub.subscribe(PrayerApp.PubSub, "prayers")
+    end
+
     form =
       %PrayerRequest{}
       |> Prayers.change_prayer_request()
@@ -35,11 +40,54 @@ defmodule PrayerAppWeb.FeedLive.Index do
           |> assign(:prayed_request_ids, Interactions.list_user_pray_ids(current_user.id))
         |> assign(:reprayed_request_ids, Interactions.list_user_re_pray_ids(current_user.id))
         |> assign(:interaction_counts, %{})
+      |> assign(:current_params, %{})
+        |> assign(:refresh_pending, false)
       |> assign(:profile_stats, %{requests: 0, followers: 0, following: 0})}
   end
 
   @impl true
+  def handle_info({:interaction_updated, %{origin_pid: origin_pid}}, socket) when origin_pid == self() do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:prayer_event, %{origin_pid: origin_pid}}, socket) when origin_pid == self() do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:prayer_event, _payload}, socket) do
+    {:noreply, schedule_refresh(socket)}
+  end
+
+  @impl true
+  def handle_info(:refresh_current_view, socket) do
+    socket =
+      socket
+      |> assign(:refresh_pending, false)
+      |> refresh_current_view()
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(
+        {:interaction_updated,
+         %{metric: metric, request_id: request_id, delta: delta, user_id: actor_user_id}},
+        socket
+      )
+      when metric in [:prays, :reprays] and is_integer(request_id) and is_integer(delta) do
+    socket =
+      socket
+      |> update_interaction_count(request_id, metric, delta)
+      |> maybe_update_current_user_interactions(metric, request_id, delta, actor_user_id)
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_params(params, _url, socket) do
+    socket = assign(socket, :current_params, params)
     {:noreply, apply_action(socket, socket.assigns.live_action, params)}
   end
 
@@ -388,7 +436,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} live_action={@live_action} current_scope={assigns[:current_scope] || nil}>
-      <div class="max-w-2xl mx-auto py-8 px-4 sm:px-0 pb-24">
+      <div id="feed-live-content" class="max-w-2xl mx-auto py-8 px-4 sm:px-0 pb-24" phx-hook="LocalTime">
         <div :if={@live_action in [:global, :following]} class="mb-6 px-1">
           <p class="text-xs uppercase tracking-[0.12em] text-base-content/50">
             {if @live_action == :following, do: "Following", else: "Global feed"}
@@ -446,7 +494,9 @@ defmodule PrayerAppWeb.FeedLive.Index do
             <li :for={{request, idx} <- Enum.with_index(@requests)}>
               <hr :if={idx > 0} class="border-base-content/25" />
               <div class="timeline-start text-xs text-base-content/60 pt-2">
-                {format_timeline_date(request.inserted_at)}
+                <span data-local-time={iso8601_datetime(request.inserted_at)}>
+                  {format_timeline_date(request.inserted_at)}
+                </span>
               </div>
               <div class="timeline-middle text-base-content/70">
                 <.icon name="hero-minus-circle" class="size-4" />
@@ -498,21 +548,27 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                         <%= case event do %>
                           <% {:created, at, _} -> %>
-                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-start text-xs text-base-content/60">
+                              <span data-local-time={iso8601_datetime(at)}>{format_timeline_date(at)}</span>
+                            </div>
                             <div class="timeline-middle text-base-content/70">
                               <.icon name="hero-minus-circle" class="size-4" />
                             </div>
                             <div class="timeline-end timeline-box shadow-sm">Pedido creado</div>
 
                           <% {:update, at, content} -> %>
-                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-start text-xs text-base-content/60">
+                              <span data-local-time={iso8601_datetime(at)}>{format_timeline_date(at)}</span>
+                            </div>
                             <div class="timeline-middle text-base-content/70">
                               <.icon name="hero-minus-circle" class="size-4" />
                             </div>
                             <div class="timeline-end timeline-box shadow-sm">{content}</div>
 
                           <% {:testimony, at, content} -> %>
-                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-start text-xs text-base-content/60">
+                              <span data-local-time={iso8601_datetime(at)}>{format_timeline_date(at)}</span>
+                            </div>
                             <div class="timeline-middle text-success">
                               <.icon name="hero-check-circle" class="size-4" />
                             </div>
@@ -877,21 +933,27 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                         <%= case event do %>
                           <% {:created, at, _} -> %>
-                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-start text-xs text-base-content/60">
+                              <span data-local-time={iso8601_datetime(at)}>{format_timeline_date(at)}</span>
+                            </div>
                             <div class="timeline-middle text-base-content/70">
                               <.icon name="hero-minus-circle" class="size-4" />
                             </div>
                             <div class="timeline-end timeline-box shadow-sm">Pedido creado</div>
 
                           <% {:update, at, content} -> %>
-                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-start text-xs text-base-content/60">
+                              <span data-local-time={iso8601_datetime(at)}>{format_timeline_date(at)}</span>
+                            </div>
                             <div class="timeline-middle text-base-content/70">
                               <.icon name="hero-minus-circle" class="size-4" />
                             </div>
                             <div class="timeline-end timeline-box shadow-sm">{content}</div>
 
                           <% {:testimony, at, content} -> %>
-                            <div class="timeline-start text-xs text-base-content/60">{format_timeline_date(at)}</div>
+                            <div class="timeline-start text-xs text-base-content/60">
+                              <span data-local-time={iso8601_datetime(at)}>{format_timeline_date(at)}</span>
+                            </div>
                             <div class="timeline-middle text-success">
                               <.icon name="hero-check-circle" class="size-4" />
                             </div>
@@ -1091,6 +1153,37 @@ defmodule PrayerAppWeb.FeedLive.Index do
     end
   end
 
+  defp refresh_current_view(socket) do
+    apply_action(socket, socket.assigns.live_action, socket.assigns.current_params || %{})
+  end
+
+  defp schedule_refresh(socket) do
+    if socket.assigns.refresh_pending do
+      socket
+    else
+      Process.send_after(self(), :refresh_current_view, 120)
+      assign(socket, :refresh_pending, true)
+    end
+  end
+
+  defp maybe_update_current_user_interactions(socket, metric, request_id, delta, actor_user_id) do
+    if actor_user_id == socket.assigns.current_user.id do
+      case metric do
+        :prays ->
+          update(socket, :prayed_request_ids, fn ids ->
+            if delta > 0, do: Enum.uniq([request_id | ids]), else: List.delete(ids, request_id)
+          end)
+
+        :reprays ->
+          update(socket, :reprayed_request_ids, fn ids ->
+            if delta > 0, do: Enum.uniq([request_id | ids]), else: List.delete(ids, request_id)
+          end)
+      end
+    else
+      socket
+    end
+  end
+
   defp format_timeline_date(nil), do: "Sin fecha"
 
   defp format_timeline_date(%NaiveDateTime{} = date_time) do
@@ -1101,5 +1194,17 @@ defmodule PrayerAppWeb.FeedLive.Index do
     date_time
     |> DateTime.to_naive()
     |> Calendar.strftime("%d/%m/%y %H:%M")
+  end
+
+  defp iso8601_datetime(nil), do: nil
+
+  defp iso8601_datetime(%DateTime{} = date_time) do
+    DateTime.to_iso8601(date_time)
+  end
+
+  defp iso8601_datetime(%NaiveDateTime{} = date_time) do
+    date_time
+    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTime.to_iso8601()
   end
 end

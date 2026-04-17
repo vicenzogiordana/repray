@@ -25,11 +25,44 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/prayer_app"
 import topbar from "../vendor/topbar"
 
+const formatLocalTimes = (root) => {
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+
+  root.querySelectorAll("[data-local-time]").forEach((el) => {
+    const raw = el.dataset.localTime
+    if (!raw) return
+
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) return
+
+    el.textContent = formatter.format(date).replace(",", "")
+  })
+}
+
+const hooks = {
+  ...colocatedHooks,
+  LocalTime: {
+    mounted() {
+      formatLocalTimes(this.el)
+    },
+    updated() {
+      formatLocalTimes(this.el)
+    },
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks,
 })
 
 // Show progress bar on live navigation and form submits
