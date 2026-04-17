@@ -1,6 +1,7 @@
 defmodule PrayerAppWeb.FeedLive.Index do
   use PrayerAppWeb, :live_view
 
+  alias PrayerApp.Accounts
   alias PrayerApp.Interactions
   alias PrayerApp.Prayers
   alias PrayerApp.Prayers.PrayerRequest
@@ -23,7 +24,10 @@ defmodule PrayerAppWeb.FeedLive.Index do
       |> assign(:current_view, :global)
       |> assign(:open_update_forms, MapSet.new())
       |> assign(:open_testimony_forms, MapSet.new())
-      |> assign(:profile_tab, :requests)
+        |> assign(:profile_tab, :requests)
+        |> assign(:search_results, [])
+        |> assign(:search_query, "")
+        |> assign(:followed_ids, [])
       |> assign(:profile_requests, [])
       |> assign(:profile_repray_requests, [])
       |> assign(:profile_stats, %{requests: 0, followers: 0, following: 0})}
@@ -64,6 +68,9 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
+    |> assign(:search_results, [])
+    |> assign(:search_query, "")
+    |> assign(:followed_ids, Social.list_followed_ids(socket.assigns.current_user.id))
   end
 
   defp apply_action(socket, :profile, _params) do
@@ -230,6 +237,48 @@ defmodule PrayerAppWeb.FeedLive.Index do
   def handle_event("set_profile_tab", %{"tab" => tab}, socket) do
     profile_tab = if tab == "reprays", do: :reprays, else: :requests
     {:noreply, assign(socket, :profile_tab, profile_tab)}
+  end
+
+  @impl true
+  def handle_event("search", %{"query" => query}, socket) do
+    query = String.trim(query || "")
+
+    results =
+      if String.length(query) >= 2 do
+        Accounts.search_users(query, socket.assigns.current_user.id)
+      else
+        []
+      end
+
+    {:noreply,
+     socket
+     |> assign(:search_query, query)
+     |> assign(:search_results, results)}
+  end
+
+  @impl true
+  def handle_event("toggle_follow", %{"id" => followed_id_str}, socket) do
+    follower_id = socket.assigns.current_user.id
+    followed_ids = socket.assigns.followed_ids
+
+    case Integer.parse(to_string(followed_id_str)) do
+      {followed_id, ""} ->
+        new_followed_ids =
+          if followed_id in followed_ids do
+            Social.unfollow(follower_id, followed_id)
+            List.delete(followed_ids, followed_id)
+          else
+            case Social.follow(follower_id, followed_id) do
+              {:ok, _} -> [followed_id | followed_ids]
+              {:error, _} -> followed_ids
+            end
+          end
+
+        {:noreply, assign(socket, :followed_ids, new_followed_ids)}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -478,10 +527,48 @@ defmodule PrayerAppWeb.FeedLive.Index do
           </ul>
         </div>
 
-        <div :if={@current_view == :search} class="card bg-base-100 shadow-sm border border-base-200">
-          <div class="card-body">
-            <h2 class="card-title">Busqueda</h2>
-            <p class="text-base-content/60">Aqui iremos mostrando resultados de busqueda.</p>
+        <div :if={@current_view == :search}>
+          <form phx-change="search" phx-submit="search" class="mb-6">
+            <div class="relative">
+              <.icon name="hero-magnifying-glass" class="absolute left-4 top-3.5 w-5 h-5 text-base-content/40" />
+              <input
+                type="text"
+                name="query"
+                value={@search_query}
+                phx-debounce="300"
+                placeholder="Buscar por nombre o @usuario..."
+                class="input input-bordered w-full pl-12 rounded-full bg-base-100 shadow-sm"
+                autocomplete="off"
+              />
+            </div>
+          </form>
+
+          <div :for={user <- @search_results} class="flex items-center justify-between p-4 bg-base-100 rounded-[2rem] shadow-sm border border-base-200 mb-3">
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="bg-base-300 text-lg font-bold rounded-full w-12 h-12 flex items-center justify-center shrink-0">
+                {user_initial(user)}
+              </div>
+              <div class="min-w-0">
+                <p class="font-bold truncate">{user.name}</p>
+                <p class="text-sm text-base-content/50 truncate">@{user.username}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              phx-click="toggle_follow"
+              phx-value-id={user.id}
+              class={[
+                "btn btn-sm rounded-full",
+                if(user.id in @followed_ids, do: "btn-neutral", else: "btn-outline")
+              ]}
+            >
+              {if user.id in @followed_ids, do: "Siguiendo", else: "Seguir"}
+            </button>
+          </div>
+
+          <div :if={@search_query != "" and Enum.empty?(@search_results)} class="text-center text-base-content/60 py-8">
+            No se encontraron usuarios.
           </div>
         </div>
 
@@ -676,6 +763,15 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp profile_initial(_), do: "U"
+
+  defp user_initial(%{name: name}) when is_binary(name) and byte_size(name) > 0 do
+    name
+    |> String.trim()
+    |> String.first()
+    |> String.upcase()
+  end
+
+  defp user_initial(_), do: "U"
 
   defp history_events(request) do
     updates =

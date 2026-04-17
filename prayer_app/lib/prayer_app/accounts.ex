@@ -60,6 +60,17 @@ defmodule PrayerApp.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  def search_users(search_term, current_user_id) when is_binary(search_term) do
+    search = "%#{String.trim(search_term)}%"
+
+    User
+    |> where([u], u.id != ^current_user_id)
+    |> where([u], ilike(u.name, ^search) or ilike(u.username, ^search))
+    |> order_by([u], asc: u.name)
+    |> limit(20)
+    |> Repo.all()
+  end
+
   ## User registration
 
   @doc """

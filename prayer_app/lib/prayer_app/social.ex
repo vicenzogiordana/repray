@@ -21,6 +21,22 @@ defmodule PrayerApp.Social do
     Repo.all(Follow)
   end
 
+  def follow(follower_id, followed_id) do
+    %Follow{}
+    |> Follow.changeset(%{follower_id: follower_id, followed_id: followed_id})
+    |> Repo.insert()
+  end
+
+  def unfollow(follower_id, followed_id) do
+    from(f in Follow, where: f.follower_id == ^follower_id and f.followed_id == ^followed_id)
+    |> Repo.delete_all()
+  end
+
+  def list_followed_ids(follower_id) do
+    from(f in Follow, where: f.follower_id == ^follower_id, select: f.followed_id)
+    |> Repo.all()
+  end
+
   def count_followers(user_id) do
     Repo.aggregate(from(f in Follow, where: f.followed_id == ^user_id), :count)
   end
