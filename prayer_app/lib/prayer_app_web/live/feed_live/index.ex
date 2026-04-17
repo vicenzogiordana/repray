@@ -32,6 +32,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
             |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
       |> assign(:profile_requests, [])
       |> assign(:profile_repray_requests, [])
+        |> assign(:interaction_counts, %{})
       |> assign(:profile_stats, %{requests: 0, followers: 0, following: 0})}
   end
 
@@ -41,19 +42,25 @@ defmodule PrayerAppWeb.FeedLive.Index do
   end
 
   defp apply_action(socket, :global, _params) do
+    requests = PrayerApp.Prayers.list_prayer_requests()
+
     socket
     |> assign(:current_view, :global)
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
-    |> assign(:requests, PrayerApp.Prayers.list_prayer_requests())
+    |> assign(:requests, requests)
+    |> assign(:interaction_counts, interaction_counts_for(requests))
   end
 
   defp apply_action(socket, :following, _params) do
+    requests = PrayerApp.Prayers.list_following_feed(socket.assigns.current_user)
+
     socket
     |> assign(:current_view, :following)
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
-    |> assign(:requests, PrayerApp.Prayers.list_following_feed(socket.assigns.current_user))
+    |> assign(:requests, requests)
+    |> assign(:interaction_counts, interaction_counts_for(requests))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -62,6 +69,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:open_update_forms, MapSet.new())
     |> assign(:open_testimony_forms, MapSet.new())
     |> assign(:requests, [])
+    |> assign(:interaction_counts, %{})
   end
 
   defp apply_action(socket, :search, _params) do
@@ -75,6 +83,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:search_results, [])
     |> assign(:search_query, "")
     |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
+    |> assign(:interaction_counts, %{})
   end
 
   defp apply_action(socket, :profile, _params) do
@@ -92,6 +101,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
     |> assign(:profile_requests, profile_requests)
     |> assign(:profile_repray_requests, profile_repray_requests)
+    |> assign(:interaction_counts, interaction_counts_for(profile_requests ++ profile_repray_requests))
     |> assign(:profile_stats, profile_stats)
   end
 
@@ -118,6 +128,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
         |> assign(:followed_ids, Social.list_followed_ids(current_user.id))
         |> assign(:profile_requests, profile_requests)
         |> assign(:profile_repray_requests, profile_repray_requests)
+        |> assign(:interaction_counts, interaction_counts_for(profile_requests ++ profile_repray_requests))
         |> assign(:profile_stats, profile_stats)
     end
   end
@@ -438,8 +449,10 @@ defmodule PrayerAppWeb.FeedLive.Index do
                   </div>
                 </details>
 
+                <% counts = request_counts(@interaction_counts, request) %>
+
                 <div class="card-actions justify-start items-center mt-4 gap-1 flex-nowrap">
-                  <button type="button" class="btn btn-ghost btn-sm rounded-full">
+                  <button type="button" class="btn btn-ghost btn-sm rounded-full gap-1">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 256 256"
@@ -451,8 +464,9 @@ defmodule PrayerAppWeb.FeedLive.Index do
                     >
                       <path d="m233.9 181.42l-36.59-36.6L160.71 24A19.75 19.75 0 0 0 128 15.62A19.75 19.75 0 0 0 95.29 24l-36.6 120.82l-36.59 36.6a14 14 0 0 0 0 19.79l32.69 32.69a14 14 0 0 0 19.79 0l48.29-48.28a38 38 0 0 0 5.13-6.38a38 38 0 0 0 5.13 6.38l48.29 48.28a14 14 0 0 0 19.79 0l32.69-32.69a14 14 0 0 0 0-19.79m-167.8 44a2 2 0 0 1-2.83 0l-32.69-32.69a2 2 0 0 1 0-2.83l14.11-14.1l35.51 35.51Zm48.28-48.29l-25.69 25.7l-35.52-35.52l15.07-15.07a6 6 0 0 0 1.5-2.5l37-122.22A7.78 7.78 0 0 1 122 29.78v129a25.83 25.83 0 0 1-7.62 18.35M134 158.75v-129a7.78 7.78 0 0 1 15.22-2.26l37 122.22a6 6 0 0 0 1.5 2.5l15.93 15.94l-36.28 34.74l-25.79-25.79a25.83 25.83 0 0 1-7.58-18.35m91.42 34l-32.69 32.69a2 2 0 0 1-2.83 0l-14-14l36.29-34.74l13.24 13.23a2 2 0 0 1-.01 2.8Z" />
                     </svg>
+                    <span class="text-xs font-medium min-w-5 text-left">{counts.prays}</span>
                   </button>
-                  <button type="button" class="btn btn-ghost btn-sm rounded-full">
+                  <button type="button" class="btn btn-ghost btn-sm rounded-full gap-1">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -468,6 +482,7 @@ defmodule PrayerAppWeb.FeedLive.Index do
                         d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3"
                       />
                     </svg>
+                    <span class="text-xs font-medium min-w-5 text-left">{counts.reprays}</span>
                   </button>
                   <button
                     :if={owns_request?(request, @current_user)}
@@ -735,6 +750,12 @@ defmodule PrayerAppWeb.FeedLive.Index do
 
                 <p class="text-base leading-relaxed">{request.content}</p>
 
+                <% counts = request_counts(@interaction_counts, request) %>
+                <div class="mt-3 flex items-center gap-4 text-xs text-base-content/60">
+                  <span>{counts.prays} orando</span>
+                  <span>{counts.reprays} re-prays</span>
+                </div>
+
                 <details class="collapse collapse-arrow mt-4 rounded-2xl border border-base-200 bg-base-100">
                   <summary class="collapse-title text-sm font-medium">Historial</summary>
                   <div class="collapse-content">
@@ -849,6 +870,21 @@ defmodule PrayerAppWeb.FeedLive.Index do
     |> Map.get(:re_prays, [])
     |> List.wrap()
     |> Enum.find_value(fn repray -> Map.get(repray, :user) end)
+  end
+
+  defp interaction_counts_for(requests) do
+    request_ids =
+      requests
+      |> List.wrap()
+      |> Enum.map(& &1.id)
+      |> Enum.uniq()
+
+    Prayers.interaction_counts(request_ids)
+  end
+
+  defp request_counts(interaction_counts, request) do
+    fallback = %{prays: request.prays_count || 0, reprays: length(List.wrap(request.re_prays))}
+    Map.get(interaction_counts, request.id, fallback)
   end
 
   defp profile_data_for(profile_user) do

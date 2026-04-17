@@ -43,6 +43,39 @@ defmodule PrayerApp.Prayers do
     )
   end
 
+  def interaction_counts(request_ids) when is_list(request_ids) do
+    ids = Enum.uniq(request_ids)
+
+    if ids == [] do
+      %{}
+    else
+      pray_counts =
+        Repo.all(
+          from p in PrayerApp.Interactions.Pray,
+            where: p.prayer_request_id in ^ids,
+            group_by: p.prayer_request_id,
+            select: {p.prayer_request_id, count(p.id)}
+        )
+        |> Map.new()
+
+      repray_counts =
+        Repo.all(
+          from rp in PrayerApp.Interactions.RePray,
+            where: rp.prayer_request_id in ^ids,
+            group_by: rp.prayer_request_id,
+            select: {rp.prayer_request_id, count(rp.id)}
+        )
+        |> Map.new()
+
+      Enum.reduce(ids, %{}, fn id, acc ->
+        Map.put(acc, id, %{
+          prays: Map.get(pray_counts, id, 0),
+          reprays: Map.get(repray_counts, id, 0)
+        })
+      end)
+    end
+  end
+
   @doc """
   Gets a single prayer_request.
 
